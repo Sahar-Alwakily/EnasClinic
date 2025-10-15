@@ -36,3 +36,46 @@
     transform: rotate(360deg);
   }
 }
+
+/* في ملف src/App.css */
+.table-break-word {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* تحسين مظهر الجدول */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th, td {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* تحسين التمرير للجداول */
+.overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #c7d2fe #f8fafc;
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 3px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #a5b4fc;
+}

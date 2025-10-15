@@ -1,13 +1,54 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+
+/* Using Tailwind via CDN in index.html - keep this file for any custom styles */
+/* Basic tweaks for the dashboard */
+
+
+/* small container widths for layout nicety */
+.container-max { max-width: 1200px; margin-inline: auto; }
+
+
+/* make long table cells wrap nicely */
+.table-break { word-break: break-word; }
+
+/* في ملف src/index.css */
+.table-break-word {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* تحسين مظهر الجدول */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th, td {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* تحسين التمرير للجداول */
+.overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #c7d2fe #f8fafc;
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 3px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #a5b4fc;
 }
