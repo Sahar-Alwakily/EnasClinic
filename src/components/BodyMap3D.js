@@ -6,7 +6,7 @@ import { ref, set, get, push, onValue } from 'firebase/database'
 import { db } from '../firebaseConfig'
 
 // 🔹 نموذج الجسم
-function WomanModel({ selectedPart, togglePart, setPanelPos, sessions, client }) {
+function WomanModel({ selectedParts, togglePart, sessions, client }) {
   const { scene, camera } = useThree()
   const [meshData, setMeshData] = useState([])
 
@@ -28,25 +28,13 @@ function WomanModel({ selectedPart, togglePart, setPanelPos, sessions, client })
   // 🔹 تغيير اللون عند تحديد جزء
   useEffect(() => {
     meshData.forEach(({ mesh, name }) => {
-      mesh.material.color.set(selectedPart === name ? '#ff69b4' : '#ffffff')
+      mesh.material.color.set(selectedParts.includes(name) ? '#ff69b4' : '#ffffff')
     })
-  }, [selectedPart, meshData])
+  }, [selectedParts, meshData])
 
   const handleClick = (e) => {
     e.stopPropagation()
     const partName = e.object.name
-    
-    // 🔹 حساب موقع الفورم بناءً على موقع النقر
-    const mouseX = e.clientX
-    const mouseY = e.clientY
-    
-    // 🔹 ضمان ظهور الفورم داخل الشاشة
-    const panelWidth = 320
-    const panelHeight = 400
-    const x = Math.min(mouseX, window.innerWidth - panelWidth - 20)
-    const y = Math.min(mouseY, window.innerHeight - panelHeight - 20)
-    
-    setPanelPos({ x, y })
     togglePart(partName)
   }
 
@@ -83,7 +71,7 @@ function WomanModel({ selectedPart, togglePart, setPanelPos, sessions, client })
 }
 
 // 🔹 النافذة الجانبية
-function SessionPanel({ partName, sessions, addSession, onClose, client, panelPos }) {
+function SessionPanel({ selectedParts, sessions, addSession, onClose, client, panelPos }) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     notes: '',
@@ -94,16 +82,21 @@ function SessionPanel({ partName, sessions, addSession, onClose, client, panelPo
 
   const handleAdd = async () => {
     if (!formData.date) return alert('اختاري تاريخ الجلسة')
+    if (selectedParts.length === 0) return alert('لم يتم اختيار أي مناطق')
     
-    const sessionData = {
-      ...formData,
-      partName,
-      clientId: client.idNumber,
-      clientName: client.fullName,
-      timestamp: new Date().toISOString()
+    // 🔹 إضافة جلسة لكل منطقة محددة
+    for (const partName of selectedParts) {
+      const sessionData = {
+        ...formData,
+        partName,
+        clientId: client.idNumber,
+        clientName: client.fullName,
+        timestamp: new Date().toISOString()
+      }
+      
+      await addSession(partName, sessionData)
     }
     
-    await addSession(partName, sessionData)
     setFormData({ 
       date: new Date().toISOString().split('T')[0], 
       notes: '', 
@@ -137,7 +130,7 @@ function SessionPanel({ partName, sessions, addSession, onClose, client, panelPo
         borderRadius: '12px',
         boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
         padding: '20px',
-        width: '300px',
+        width: '320px',
         maxHeight: '80vh',
         direction: 'rtl',
         zIndex: 1000,
@@ -146,7 +139,7 @@ function SessionPanel({ partName, sessions, addSession, onClose, client, panelPo
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h3 style={{ margin: 0, color: '#ff69b4', fontSize: '18px' }}>💆‍♀️ {partName}</h3>
+        <h3 style={{ margin: 0, color: '#ff69b4', fontSize: '18px' }}>💆‍♀️ إضافة جلسات</h3>
         <button
           onClick={onClose}
           style={{
@@ -168,9 +161,28 @@ function SessionPanel({ partName, sessions, addSession, onClose, client, panelPo
         </button>
       </div>
       
-      <p style={{ textAlign: 'center', margin: '5px 0 15px 0', color: '#666', fontSize: '14px' }}>
-        عدد الجلسات: {sessions?.length || 0}
-      </p>
+      <div style={{ marginBottom: '15px' }}>
+        <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', color: '#333' }}>المناطق المحددة:</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '15px' }}>
+          {selectedParts.map(part => (
+            <span 
+              key={part}
+              style={{
+                background: '#ff69b4',
+                color: 'white',
+                padding: '5px 10px',
+                borderRadius: '15px',
+                fontSize: '12px'
+              }}
+            >
+              {part}
+            </span>
+          ))}
+        </div>
+        <p style={{ textAlign: 'center', margin: '5px 0 15px 0', color: '#666', fontSize: '14px' }}>
+          سيتم إضافة {selectedParts.length} جلسة
+        </p>
+      </div>
 
       <div style={{ marginBottom: '15px' }}>
         <div style={{ marginBottom: '12px' }}>
@@ -231,7 +243,7 @@ function SessionPanel({ partName, sessions, addSession, onClose, client, panelPo
           onMouseOver={(e) => e.target.style.background = '#e0559c'}
           onMouseOut={(e) => e.target.style.background = '#ff69b4'}
         >
-          إضافة جلسة
+          إضافة الجلسات ({selectedParts.length})
         </button>
       </div>
     </div>
@@ -240,10 +252,11 @@ function SessionPanel({ partName, sessions, addSession, onClose, client, panelPo
 
 // 🔹 التطبيق الرئيسي
 export default function BodyMap3D({ client, onSaveSession }) {
-  const [selectedPart, setSelectedPart] = useState(null)
+  const [selectedParts, setSelectedParts] = useState([])
   const [panelPos, setPanelPos] = useState({ x: 0, y: 0 })
   const [sessions, setSessions] = useState({})
   const [showAllSessions, setShowAllSessions] = useState(false)
+  const [showPanel, setShowPanel] = useState(false)
 
   // 🔹 جلب الجلسات من Firebase
   useEffect(() => {
@@ -275,7 +288,26 @@ export default function BodyMap3D({ client, onSaveSession }) {
   }, [client.idNumber])
 
   const togglePart = (partName) => {
-    setSelectedPart(selectedPart === partName ? null : partName)
+    setSelectedParts(prev => {
+      if (prev.includes(partName)) {
+        return prev.filter(part => part !== partName)
+      } else {
+        return [...prev, partName]
+      }
+    })
+  }
+
+  const openSessionPanel = () => {
+    if (selectedParts.length === 0) {
+      alert('يرجى تحديد منطقة واحدة على الأقل')
+      return
+    }
+    
+    // حساب موقع الفورم في وسط الشاشة
+    const x = (window.innerWidth - 320) / 2
+    const y = (window.innerHeight - 400) / 2
+    setPanelPos({ x, y })
+    setShowPanel(true)
   }
 
   const addSession = async (part, sessionData) => {
@@ -296,11 +328,25 @@ export default function BodyMap3D({ client, onSaveSession }) {
           id: newSessionRef.key
         })
       }
-
-      alert('تم حفظ الجلسة بنجاح!')
     } catch (error) {
       console.error('Error saving session:', error)
       alert('حدث خطأ أثناء حفظ الجلسة')
+    }
+  }
+
+  const handleAddSessions = async (sessionData) => {
+    try {
+      for (const partName of selectedParts) {
+        await addSession(partName, {
+          ...sessionData,
+          partName
+        })
+      }
+      alert(`تم إضافة ${selectedParts.length} جلسة بنجاح!`)
+      setSelectedParts([])
+    } catch (error) {
+      console.error('Error saving sessions:', error)
+      alert('حدث خطأ أثناء حفظ الجلسات')
     }
   }
 
@@ -321,6 +367,66 @@ export default function BodyMap3D({ client, onSaveSession }) {
           <p style={{ color: '#666', margin: '5px 0' }}>📞 {client.phone}</p>
           <p style={{ color: '#666', margin: '5px 0' }}>🩺 عدد الجلسات: {allSessions.length}</p>
         </div>
+
+        {/* 🔹 زر إضافة الجلسات */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
+          <button
+            onClick={openSessionPanel}
+            disabled={selectedParts.length === 0}
+            style={{
+              padding: '10px 20px',
+              background: selectedParts.length > 0 ? '#ff69b4' : '#ccc',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: selectedParts.length > 0 ? 'pointer' : 'not-allowed',
+              fontSize: '14px',
+              fontWeight: 'bold'
+            }}
+          >
+            إضافة جلسات للمناطق المحددة ({selectedParts.length})
+          </button>
+          
+          {selectedParts.length > 0 && (
+            <button
+              onClick={() => setSelectedParts([])}
+              style={{
+                padding: '10px 15px',
+                background: '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              إلغاء التحديد
+            </button>
+          )}
+        </div>
+
+        {/* 🔹 المناطق المحددة */}
+        {selectedParts.length > 0 && (
+          <div style={{ marginTop: '15px', textAlign: 'center' }}>
+            <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '14px' }}>المناطق المحددة:</p>
+            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '5px' }}>
+              {selectedParts.map(part => (
+                <span 
+                  key={part}
+                  style={{
+                    background: '#ff69b4',
+                    color: 'white',
+                    padding: '5px 10px',
+                    borderRadius: '15px',
+                    fontSize: '12px'
+                  }}
+                >
+                  {part}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 🔹 خريطة الجسم */}
@@ -336,9 +442,8 @@ export default function BodyMap3D({ client, onSaveSession }) {
           <ambientLight intensity={1} />
           <directionalLight position={[3, 3, 3]} intensity={2} />
           <WomanModel
-            selectedPart={selectedPart}
+            selectedParts={selectedParts}
             togglePart={togglePart}
-            setPanelPos={setPanelPos}
             sessions={sessions}
             client={client}
           />
@@ -351,13 +456,13 @@ export default function BodyMap3D({ client, onSaveSession }) {
         </Canvas>
       </div>
 
-      {/* 🔹 الفورم يظهر بجانب المنطقة المختارة */}
-      {selectedPart && (
+      {/* 🔹 فورم إضافة الجلسات */}
+      {showPanel && (
         <SessionPanel
-          partName={selectedPart}
-          sessions={sessions[selectedPart]}
-          addSession={addSession}
-          onClose={() => setSelectedPart(null)}
+          selectedParts={selectedParts}
+          sessions={sessions}
+          addSession={handleAddSessions}
+          onClose={() => setShowPanel(false)}
           client={client}
           panelPos={panelPos}
         />
