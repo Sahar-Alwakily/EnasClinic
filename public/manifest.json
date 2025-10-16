@@ -3,17 +3,17 @@
   "name": "Enas Clinic Dashboard",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "logo192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "logo512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
   ],
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "theme_color": "#10b981",
   "background_color": "#ffffff",
