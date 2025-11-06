@@ -7,8 +7,13 @@ const PORT = process.env.PORT || 3000;
 // تقديم ملفات build
 app.use(express.static(path.join(__dirname, "build")));
 
-// أي طلب غير معروف يرسل index.html (ضروري للـ React Router)
-app.get("/*", (req, res) => {
+// للـ React Router - يخدم index.html لجميع المسارات غير الموجودة
+app.get("*", (req, res, next) => {
+  // إذا كان الطلب لملف (يملك امتداد) فانتقل لل middleware التالي
+  if (req.path.includes('.')) {
+    return next();
+  }
+  // وإلا فخدم index.html
   res.sendFile(path.join(__dirname, "build", "index.html"));
 });
 
