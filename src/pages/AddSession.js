@@ -6,7 +6,6 @@ export default function AddSession() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // التصحيح هنا: استقبل البيانات كـ patient بدلاً من client
   const patient = location.state?.patient || { 
     fullName: 'عميل تجريبي', 
     idNumber: '0000',
@@ -32,12 +31,10 @@ export default function AddSession() {
         </button>
       </div>
       
-      {/* التصحيح هنا: أرسل patient كـ client للـ BodyMap3D */}
       <BodyMap3D
         client={patient}
         onSaveSession={handleSaveSession}
       />
-
     </div>
   );
 }
