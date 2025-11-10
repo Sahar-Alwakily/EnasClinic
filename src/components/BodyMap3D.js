@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Text, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
-import { ref, set, get, push, onValue, remove, update } from 'firebase/database'
+import { ref, set, get, push, onValue, remove } from 'firebase/database'
 import { db } from '../firebaseConfig'
 
 // 🎨 تدرجات الألوان الجديدة
@@ -80,21 +80,19 @@ function WomanModel({ selectedParts, togglePart, sessions, client }) {
     </>
   )
 }
-
-// 🔹 النافذة الجانبية - معدلة مع نظام الدفع التلقائي
 function SessionPanel({ selectedParts, sessions, addSession, onClose, client }) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     notes: '',
     paymentType: 'نقدي',
+    amount: '',
     therapist: '',
     paidAmount: '', // 🔹 إضافة حقل المبلغ المدفوع
+    remainingAmount: '' // 🔹 إضافة حقل المبلغ المتبقي
   })
 
   const [areasPrices, setAreasPrices] = useState({})
   const [totalPrice, setTotalPrice] = useState(0)
-  const [remainingAmount, setRemainingAmount] = useState(0)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // 🔹 جلب أسعار المناطق من Firebase
   useEffect(() => {
@@ -117,7 +115,14 @@ function SessionPanel({ selectedParts, sessions, addSession, onClose, client }) 
       }
     })
     setTotalPrice(total)
-    setRemainingAmount(total - parseInt(formData.paidAmount || 0))
+    
+    // 🔹 تحديث المبلغ المتبقي تلقائيًا
+    if (formData.paidAmount) {
+      setFormData(prev => ({
+        ...prev,
+        remainingAmount: total - parseInt(formData.paidAmount)
+      }))
+    }
   }, [selectedParts, areasPrices, formData.paidAmount])
 
   const handleAdd = async () => {
@@ -129,54 +134,33 @@ function SessionPanel({ selectedParts, sessions, addSession, onClose, client }) 
     try {
       setIsSubmitting(true)
       
-      const paid = parseInt(formData.paidAmount)
-      const remaining = totalPrice - paid
-      
       const sessionData = {
         date: formData.date,
         notes: formData.notes,
         paymentType: formData.paymentType,
         totalPrice: totalPrice, // 🔹 السعر الكلي
-        paidAmount: paid, // 🔹 المبلغ المدفوع
-        remainingAmount: remaining, // 🔹 المتبقي
+        paidAmount: parseInt(formData.paidAmount), // 🔹 المبلغ المدفوع
+        remainingAmount: totalPrice - parseInt(formData.paidAmount), // 🔹 المتبقي
         therapist: formData.therapist,
         clientId: client.idNumber,
         clientName: client.fullName,
         bodyAreas: selectedParts, // 🔹 حفظ المناطق المختارة
-        paymentStatus: remaining > 0 ? 'جزئي' : 'كامل', // 🔹 حالة الدفع
+        paymentStatus: totalPrice - parseInt(formData.paidAmount) > 0 ? 'جزئي' : 'كامل', // 🔹 حالة الدفع
         timestamp: new Date().toISOString()
       }
       
-      // 🔹 حفظ الجلسة والدفعة معًا
       const results = await addSession(selectedParts, sessionData)
       
       if (results.success) {
-        // 🔹 حفظ سجل الدفعة منفصلًا في payments
-        const paymentData = {
-          patientId: client.idNumber,
-          patientName: client.fullName,
-          sessionDate: formData.date,
-          bodyAreas: selectedParts,
-          totalPrice: totalPrice,
-          paidAmount: paid,
-          remainingAmount: remaining,
-          paymentType: formData.paymentType,
-          paymentDate: new Date().toISOString(),
-          status: remaining > 0 ? 'جزئي' : 'كامل',
-          therapist: formData.therapist,
-          notes: formData.notes
-        }
-
-        const paymentRef = ref(db, `payments/${Date.now()}`)
-        await update(paymentRef, paymentData)
-
-        alert(`✅ تم إضافة ${selectedParts.length} جلسة بنجاح! المبلغ المتبقي: ${remaining} ش`)
+        alert(`✅ تم إضافة ${selectedParts.length} جلسة بنجاح! المبلغ المتبقي: ${sessionData.remainingAmount} ش`)
         setFormData({ 
           date: new Date().toISOString().split('T')[0], 
           notes: '', 
           paymentType: 'نقدي', 
+          amount: '', 
           therapist: '',
-          paidAmount: ''
+          paidAmount: '',
+          remainingAmount: ''
         })
         onClose()
       } else {
@@ -194,9 +178,14 @@ function SessionPanel({ selectedParts, sessions, addSession, onClose, client }) 
     const paid = e.target.value
     setFormData(prev => ({
       ...prev,
-      paidAmount: paid
+      paidAmount: paid,
+      remainingAmount: totalPrice - parseInt(paid || 0)
     }))
   }
+// 🔹 النافذة الجانبية
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -246,103 +235,23 @@ function SessionPanel({ selectedParts, sessions, addSession, onClose, client }) 
           </button>
         </div>
 
-        {/* 🔹 عرض السعر الكلي */}
-        <div style={{
-          background: colors.gradientLight,
-          padding: '10px',
-          borderRadius: '8px',
-          marginBottom: '15px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '14px', color: colors.text, marginBottom: '5px' }}>
-            السعر الكلي للمناطق المختارة:
-          </div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: colors.primary }}>
-            {totalPrice} ش
-          </div>
-        </div>
-
-        {/* 🔹 تفاصيل الأسعار */}
         <div style={{ marginBottom: '15px' }}>
-          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: colors.text }}>تفاصيل الأسعار:</p>
-          <div style={{ background: colors.background, padding: '8px', borderRadius: '6px' }}>
+          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: colors.text }}>المناطق المحددة ({selectedParts.length}):</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '10px' }}>
             {selectedParts.map(part => (
-              <div key={part} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '4px 0',
+              <span key={part} style={{
+                background: colors.gradient,
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '12px',
                 fontSize: '12px'
               }}>
-                <span style={{ color: colors.text }}>{part}</span>
-                <span style={{ color: colors.primary, fontWeight: 'bold' }}>
-                  {areasPrices[part] || 0} ش
-                </span>
-              </div>
+                {part}
+              </span>
             ))}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '4px 0',
-              fontSize: '12px',
-              borderTop: '1px solid #ddd',
-              marginTop: '4px',
-              fontWeight: 'bold'
-            }}>
-              <span style={{ color: colors.text }}>المجموع:</span>
-              <span style={{ color: colors.primary }}>{totalPrice} ش</span>
-            </div>
           </div>
         </div>
 
-        {/* 🔹 حقل المبلغ المدفوع */}
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', fontSize: '14px', color: colors.text, marginBottom: '5px' }}>
-            المبلغ المدفوع (شيقل) *
-          </label>
-          <input
-            type="number"
-            name="paidAmount"
-            value={formData.paidAmount}
-            onChange={handlePaidAmountChange}
-            placeholder="أدخل المبلغ المدفوع"
-            style={{
-              width: '100%',
-              padding: '10px',
-              borderRadius: '8px',
-              border: `1px solid ${colors.primary}30`,
-              fontSize: '14px'
-            }}
-          />
-        </div>
-
-        {/* 🔹 عرض المبلغ المتبقي تلقائيًا */}
-        {formData.paidAmount && (
-          <div style={{
-            background: remainingAmount > 0 ? '#FFF3CD' : '#D1ECF1',
-            padding: '8px',
-            borderRadius: '6px',
-            marginBottom: '10px',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              fontSize: '13px',
-              color: remainingAmount > 0 ? '#856404' : '#0C5460',
-              fontWeight: 'bold'
-            }}>
-              المبلغ المتبقي: {remainingAmount} ش
-            </div>
-            <div style={{
-              fontSize: '11px',
-              color: remainingAmount > 0 ? '#856404' : '#0C5460'
-            }}>
-              {remainingAmount > 0 ? 'دفعة جزئية' : 'تم الدفع بالكامل'}
-            </div>
-          </div>
-        )}
-
-        {/* الحقول الأخرى */}
         <div style={{ marginBottom: '10px' }}>
           <input
             type="date"
@@ -366,7 +275,25 @@ function SessionPanel({ selectedParts, sessions, addSession, onClose, client }) 
             name="therapist"
             value={formData.therapist}
             onChange={handleChange}
-            placeholder="اسم المعالج/ة *"
+            placeholder="اسم المعالج/ة"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '8px',
+              border: `1px solid ${colors.primary}30`,
+              fontSize: '14px',
+              marginBottom: '10px'
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '10px' }}>
+          <input
+            type="number"
+            name="amount"
+            value={formData.amount}
+            onChange={handleChange}
+            placeholder="المبلغ (شيقل)"
             style={{
               width: '100%',
               padding: '10px',
@@ -418,21 +345,21 @@ function SessionPanel({ selectedParts, sessions, addSession, onClose, client }) 
 
         <button
           onClick={handleAdd}
-          disabled={isSubmitting || !formData.paidAmount || !formData.therapist}
+          disabled={isSubmitting}
           style={{
             width: '100%',
-            background: (formData.paidAmount && formData.therapist) ? colors.gradient : '#ccc',
+            background: colors.gradient,
             color: 'white',
             border: 'none',
             padding: '12px',
             borderRadius: '8px',
             fontSize: '16px',
             fontWeight: 'bold',
-            cursor: (formData.paidAmount && formData.therapist) ? 'pointer' : 'not-allowed',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
             opacity: isSubmitting ? 0.6 : 1
           }}
         >
-          {isSubmitting ? 'جاري الإضافة...' : `إضافة جلسة وتسجيل الدفعة`}
+          {isSubmitting ? 'جاري الإضافة...' : `إضافة ${selectedParts.length} جلسة`}
         </button>
       </div>
     </div>
@@ -983,21 +910,9 @@ export default function BodyMap3D({ client, onSaveSession }) {
                     <div style={{ fontSize: '10px', color: colors.textLight }}>
                       {session.date} - {session.therapist}
                     </div>
-                    {session.paidAmount && (
-                      <div style={{ fontSize: '9px', color: session.remainingAmount > 0 ? colors.warning : colors.success }}>
-                        {session.paidAmount} ش / {session.totalPrice} ش
-                        {session.remainingAmount > 0 && ` (متبقي: ${session.remainingAmount} ش)`}
-                      </div>
-                    )}
                   </div>
-                  <div style={{ 
-                    fontSize: '10px', 
-                    padding: '2px 6px', 
-                    borderRadius: '4px',
-                    background: session.paymentStatus === 'كامل' ? colors.success + '20' : colors.warning + '20',
-                    color: session.paymentStatus === 'كامل' ? colors.success : colors.warning
-                  }}>
-                    {session.paymentStatus || 'غير محدد'}
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.primary }}>
+                    {session.amount} ش
                   </div>
                 </div>
               ))}
