@@ -23,13 +23,13 @@ export default function AddReview() {
   const navigate = useNavigate();
   const [review, setReview] = useState({
     clientName: "",
-    service: "",
-    rating: "",
+    rating: 0,
     comment: "",
     date: new Date().toISOString().split('T')[0]
   });
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [hoverRating, setHoverRating] = useState(0);
 
   // جلب قائمة المرضى من Firebase
   useEffect(() => {
@@ -52,10 +52,22 @@ export default function AddReview() {
     setReview((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleStarClick = (rating) => {
+    setReview((prev) => ({ ...prev, rating }));
+  };
+
+  const handleStarHover = (rating) => {
+    setHoverRating(rating);
+  };
+
+  const handleStarLeave = () => {
+    setHoverRating(0);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!review.clientName || !review.service || !review.rating || !review.comment) {
+    if (!review.clientName || !review.rating || !review.comment) {
       alert("❗ الرجاء ملء جميع الحقول المطلوبة");
       return;
     }
@@ -69,7 +81,6 @@ export default function AddReview() {
       await set(newReviewRef, {
         id: newReviewRef.key,
         clientName: review.clientName,
-        service: review.service,
         rating: review.rating,
         comment: review.comment,
         date: review.date,
@@ -81,11 +92,11 @@ export default function AddReview() {
       // إعادة تعيين الحقول
       setReview({
         clientName: "",
-        service: "",
-        rating: "",
+        rating: 0,
         comment: "",
         date: new Date().toISOString().split('T')[0]
       });
+      setHoverRating(0);
       
     } catch (error) {
       console.error("Error saving review:", error);
@@ -95,20 +106,51 @@ export default function AddReview() {
     }
   };
 
-  // دالة للحصول على النجوم بناءً على التقييم
-  const renderStars = (rating) => {
+  // دالة لعرض النجوم
+  const renderStars = () => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
+      const isActive = i <= (hoverRating || review.rating);
       stars.push(
-        <span key={i} style={{ 
-          color: i <= rating ? '#FFD700' : '#E2E8F0',
-          fontSize: '18px'
-        }}>
-          ★
-        </span>
+        <button
+          key={i}
+          type="button"
+          onClick={() => handleStarClick(i)}
+          onMouseEnter={() => handleStarHover(i)}
+          onMouseLeave={handleStarLeave}
+          style={{
+            background: 'none',
+            border: 'none',
+            fontSize: '40px',
+            cursor: 'pointer',
+            padding: '5px',
+            transition: 'all 0.2s ease',
+            transform: isActive ? 'scale(1.1)' : 'scale(1)'
+          }}
+        >
+          <span style={{ 
+            color: isActive ? '#FFD700' : '#E2E8F0',
+            filter: isActive ? 'drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4))' : 'none',
+            transition: 'all 0.2s ease'
+          }}>
+            ★
+          </span>
+        </button>
       );
     }
     return stars;
+  };
+
+  // دالة للحصول على نص التقييم
+  const getRatingText = () => {
+    switch(review.rating) {
+      case 1: return "⭐ ضعيف - غير راضٍ";
+      case 2: return "⭐⭐ متوسط - يحتاج تحسين";
+      case 3: return "⭐⭐⭐ جيد - تجربة مرضية";
+      case 4: return "⭐⭐⭐⭐ جيد جداً - راضٍ تماماً";
+      case 5: return "⭐⭐⭐⭐⭐ ممتاز - تجربة رائعة";
+      default: return "اختر عدد النجوم للتقييم";
+    }
   };
 
   return (
@@ -169,13 +211,13 @@ export default function AddReview() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
           
           {/* اختيار العميل */}
           <div>
             <label style={{
               display: 'block',
-              marginBottom: '8px',
+              marginBottom: '12px',
               fontWeight: '600',
               color: colors.text,
               fontSize: '16px',
@@ -219,64 +261,11 @@ export default function AddReview() {
             </select>
           </div>
 
-          {/* الخدمة */}
+          {/* التقييم بالنجوم */}
           <div>
             <label style={{
               display: 'block',
-              marginBottom: '8px',
-              fontWeight: '600',
-              color: colors.text,
-              fontSize: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <span style={{
-                background: colors.secondary,
-                color: 'white',
-                width: '20px',
-                height: '20px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '12px'
-              }}>2</span>
-              الخدمة المقدمة *
-            </label>
-            <select
-              value={review.service}
-              onChange={(e) => handleChange("service", e.target.value)}
-              style={{
-                width: '100%',
-                padding: '15px',
-                borderRadius: '12px',
-                border: `2px solid ${colors.primary}30`,
-                fontSize: '16px',
-                background: colors.background,
-                transition: 'all 0.3s ease'
-              }}
-              required
-            >
-              <option value="">اختر الخدمة المقدمة</option>
-              <option value="إزالة شعر الذراع">إزالة شعر الذراع</option>
-              <option value="إزالة شعر الساق">إزالة شعر الساق</option>
-              <option value="عناية الوجه">عناية الوجه</option>
-              <option value="عناية الرأس">عناية الرأس</option>
-              <option value="عناية الصدر">عناية الصدر</option>
-              <option value="عناية الظهر">عناية الظهر</option>
-              <option value="عناية اليد">عناية اليد</option>
-              <option value="عناية القدم">عناية القدم</option>
-              <option value="تنظيف البشرة">تنظيف البشرة</option>
-              <option value="تشكيل الجسم">تشكيل الجسم</option>
-            </select>
-          </div>
-
-          {/* التقييم */}
-          <div>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
+              marginBottom: '12px',
               fontWeight: '600',
               color: colors.text,
               fontSize: '16px',
@@ -294,59 +283,72 @@ export default function AddReview() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '12px'
-              }}>3</span>
+              }}>2</span>
               تقييم الخدمة *
             </label>
-            <select
-              value={review.rating}
-              onChange={(e) => handleChange("rating", e.target.value)}
-              style={{
-                width: '100%',
-                padding: '15px',
-                borderRadius: '12px',
-                border: `2px solid ${colors.primary}30`,
-                fontSize: '16px',
-                background: colors.background,
-                transition: 'all 0.3s ease'
-              }}
-              required
-            >
-              <option value="">كيف كانت تجربة العميل؟</option>
-              <option value="5">⭐⭐⭐⭐⭐ ممتاز - تجربة رائعة</option>
-              <option value="4">⭐⭐⭐⭐ جيد جداً - راضٍ تماماً</option>
-              <option value="3">⭐⭐⭐ جيد - تجربة مرضية</option>
-              <option value="2">⭐⭐ متوسط - يحتاج تحسين</option>
-              <option value="1">⭐ ضعيف - غير راضٍ</option>
-            </select>
             
-            {/* معاينة النجوم */}
-            {review.rating && (
+            {/* النجوم التفاعلية */}
+            <div style={{
+              textAlign: 'center',
+              padding: '20px',
+              background: colors.gradientLight,
+              borderRadius: '15px',
+              border: `2px dashed ${colors.primary}30`
+            }}>
               <div style={{
-                marginTop: '10px',
-                padding: '12px',
-                background: colors.gradientLight,
-                borderRadius: '8px',
-                textAlign: 'center'
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '5px',
+                marginBottom: '15px'
               }}>
-                <div style={{ fontSize: '14px', color: colors.textLight, marginBottom: '5px' }}>
-                  معاينة التقييم:
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '2px' }}>
-                  {renderStars(parseInt(review.rating))}
-                </div>
+                {renderStars()}
               </div>
-            )}
+              
+              <div style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: review.rating ? colors.primary : colors.textLight,
+                minHeight: '24px',
+                transition: 'all 0.3s ease'
+              }}>
+                {getRatingText()}
+              </div>
+              
+              {!review.rating && (
+                <div style={{
+                  fontSize: '14px',
+                  color: colors.textLight,
+                  marginTop: '8px'
+                }}>
+                  انقر على النجوم لتقييم الخدمة
+                </div>
+              )}
+            </div>
           </div>
 
           {/* التاريخ */}
           <div>
             <label style={{
               display: 'block',
-              marginBottom: '8px',
+              marginBottom: '12px',
               fontWeight: '600',
               color: colors.text,
-              fontSize: '16px'
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}>
+              <span style={{
+                background: colors.secondary,
+                color: 'white',
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px'
+              }}>3</span>
               📅 تاريخ التقييم
             </label>
             <input
@@ -369,7 +371,7 @@ export default function AddReview() {
           <div>
             <label style={{
               display: 'block',
-              marginBottom: '8px',
+              marginBottom: '12px',
               fontWeight: '600',
               color: colors.text,
               fontSize: '16px',
@@ -413,30 +415,30 @@ export default function AddReview() {
           {/* زر الإرسال */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !review.rating}
             style={{
               width: '100%',
               padding: '18px',
-              background: loading ? '#ccc' : colors.gradient,
+              background: (loading || !review.rating) ? '#ccc' : colors.gradient,
               color: 'white',
               border: 'none',
               borderRadius: '12px',
               fontSize: '18px',
               fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-              boxShadow: loading ? 'none' : '0 8px 25px rgba(139, 95, 191, 0.4)',
+              cursor: (loading || !review.rating) ? 'not-allowed' : 'pointer',
+              opacity: (loading || !review.rating) ? 0.6 : 1,
+              boxShadow: (loading || !review.rating) ? 'none' : '0 8px 25px rgba(139, 95, 191, 0.4)',
               transition: 'all 0.3s ease',
               marginTop: '10px'
             }}
             onMouseEnter={(e) => {
-              if (!loading) {
+              if (!loading && review.rating) {
                 e.target.style.transform = 'translateY(-2px)';
                 e.target.style.boxShadow = '0 12px 30px rgba(139, 95, 191, 0.6)';
               }
             }}
             onMouseLeave={(e) => {
-              if (!loading) {
+              if (!loading && review.rating) {
                 e.target.style.transform = 'translateY(0)';
                 e.target.style.boxShadow = '0 8px 25px rgba(139, 95, 191, 0.4)';
               }
