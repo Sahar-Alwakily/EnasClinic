@@ -21,56 +21,75 @@ export default function AddSession() {
   };
 
   const sortedSessions = useMemo(() => 
-    sessions.sort((a, b) => new Date(b.date) - new Date(a.date)), 
+    [...sessions].sort((a, b) => new Date(b.date) - new Date(a.date)), 
     [sessions]
   );
 
-  const displayedSessions = showAllSessions ? sortedSessions : sortedSessions.slice(0, 3);
+  const displayedSessions = showAllSessions ? sortedSessions : sortedSessions.slice(0, 5);
 
   return (
-    <div className="add-session-container">
-      <div className="header">
-        <h2>إضافة جلسة لعميلة: {patient.fullName}</h2>
-        <button onClick={() => navigate(-1)} className="back-btn">
-          العودة
+    <div className="add-session-page">
+      {/* الهيدر */}
+      <div className="page-header">
+        <button onClick={() => navigate(-1)} className="back-button">
+          ← العودة
         </button>
+        <h1 className="page-title">إضافة جلسة</h1>
+        <div className="patient-info">
+          <span className="patient-name">{patient.fullName}</span>
+          <span className="patient-id">ID: {patient.idNumber}</span>
+        </div>
       </div>
-      
-      <BodyMap3D
-        client={patient}
-        onSaveSession={handleSaveSession}
-      />
+
+      {/* مكون BodyMap3D */}
+      <div className="body-map-section">
+        <BodyMap3D
+          client={patient}
+          onSaveSession={handleSaveSession}
+        />
+      </div>
 
       {/* سجل الجلسات */}
-      <div className="sessions-panel">
-        <h3>📋 سجل الجلسات</h3>
+      <div className="sessions-section">
+        <div className="sessions-header">
+          <h2 className="sessions-title">📋 سجل الجلسات</h2>
+          <span className="sessions-count">({sessions.length})</span>
+        </div>
         
         {sessions.length === 0 ? (
-          <p className="no-sessions">لا توجد جلسات مسجلة بعد</p>
+          <div className="empty-state">
+            <div className="empty-icon">📝</div>
+            <p className="empty-text">لا توجد جلسات مسجلة بعد</p>
+            <p className="empty-subtext">سيتم عرض الجلسات هنا بعد إضافتها</p>
+          </div>
         ) : (
           <>
             <div className="sessions-list">
               {displayedSessions.map((session, index) => (
-                <div key={session.id || index} className="session-item">
-                  <div className="session-info">
-                    <div className="session-part">{session.partName || 'غير محدد'}</div>
-                    <div className="session-meta">
-                      {session.date} - {session.therapist}
+                <div key={session.id || index} className="session-card">
+                  <div className="session-main">
+                    <div className="session-area">{session.partName || 'غير محدد'}</div>
+                    <div className="session-date">{session.date}</div>
+                  </div>
+                  <div className="session-details">
+                    <div className="session-therapist">{session.therapist}</div>
+                    <div className="session-amount">{session.amount} شيكل</div>
+                  </div>
+                  {session.notes && (
+                    <div className="session-notes">
+                      <span>ملاحظات: {session.notes}</span>
                     </div>
-                  </div>
-                  <div className="session-amount">
-                    {session.amount} ش
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
 
-            {sessions.length > 3 && (
+            {sessions.length > 5 && (
               <button
                 onClick={() => setShowAllSessions(!showAllSessions)}
-                className="toggle-sessions-btn"
+                className="show-more-button"
               >
-                {showAllSessions ? 'عرض أقل' : `عرض الكل (${sessions.length})`}
+                {showAllSessions ? 'عرض أقل' : `عرض المزيد (${sessions.length - 5})`}
               </button>
             )}
           </>
@@ -78,85 +97,269 @@ export default function AddSession() {
       </div>
 
       <style jsx>{`
-        .add-session-container {
-          padding: 16px;
-          background: #F8FAFF;
+        .add-session-page {
           min-height: 100vh;
+          background: #f8faff;
           direction: rtl;
+          padding: 0;
         }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-        }
-        .header h2 {
-          color: #2D3748;
-          margin: 0;
-        }
-        .back-btn {
-          padding: 8px 16px;
-          background: #718096;
+
+        .page-header {
+          background: linear-gradient(135deg, #8B5FBF 0%, #6A82FB 100%);
           color: white;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-        }
-        .back-btn:hover {
-          background: #4A5568;
-        }
-        .sessions-panel {
-          background: white;
-          border-radius: 10px;
           padding: 16px;
-          margin-top: 20px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          box-shadow: 0 2px 10px rgba(139, 95, 191, 0.3);
         }
-        .sessions-panel h3 {
-          color: #8B5FBF;
+
+        .back-button {
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: white;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 14px;
+          cursor: pointer;
           margin-bottom: 12px;
-          text-align: center;
+          backdrop-filter: blur(10px);
         }
-        .no-sessions {
+
+        .page-title {
+          margin: 0 0 8px 0;
+          font-size: 20px;
+          font-weight: bold;
+        }
+
+        .patient-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 14px;
+          opacity: 0.9;
+        }
+
+        .patient-name {
+          font-weight: bold;
+        }
+
+        .patient-id {
+          background: rgba(255, 255, 255, 0.2);
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+        }
+
+        .body-map-section {
+          padding: 12px;
+        }
+
+        .sessions-section {
+          background: white;
+          margin: 12px;
+          border-radius: 16px;
+          padding: 16px;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .sessions-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #f1f1f1;
+        }
+
+        .sessions-title {
+          margin: 0;
+          font-size: 18px;
+          color: #2D3748;
+        }
+
+        .sessions-count {
+          background: #8B5FBF;
+          color: white;
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: bold;
+        }
+
+        .empty-state {
           text-align: center;
+          padding: 40px 20px;
           color: #718096;
-          padding: 20px;
         }
+
+        .empty-icon {
+          font-size: 48px;
+          margin-bottom: 16px;
+        }
+
+        .empty-text {
+          font-size: 16px;
+          margin: 0 0 8px 0;
+          font-weight: bold;
+        }
+
+        .empty-subtext {
+          font-size: 14px;
+          margin: 0;
+          opacity: 0.7;
+        }
+
         .sessions-list {
-          max-height: 200px;
-          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
         }
-        .session-item {
-          padding: 8px;
-          border-bottom: 1px solid #8B5FBF20;
+
+        .session-card {
+          background: #f8faff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px;
+          transition: all 0.3s ease;
+        }
+
+        .session-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(139, 95, 191, 0.15);
+        }
+
+        .session-main {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+
+        .session-area {
+          font-weight: bold;
+          color: #2D3748;
+          font-size: 14px;
+        }
+
+        .session-date {
+          color: #718096;
+          font-size: 12px;
+          background: #edf2f7;
+          padding: 4px 8px;
+          border-radius: 8px;
+        }
+
+        .session-details {
           display: flex;
           justify-content: space-between;
           align-items: center;
         }
-        .session-part {
-          font-size: 12px;
-          font-weight: bold;
-          color: #2D3748;
+
+        .session-therapist {
+          color: #4A5568;
+          font-size: 13px;
         }
-        .session-meta {
-          font-size: 10px;
+
+        .session-amount {
+          color: #8B5FBF;
+          font-weight: bold;
+          font-size: 14px;
+        }
+
+        .session-notes {
+          margin-top: 8px;
+          padding-top: 8px;
+          border-top: 1px dashed #e2e8f0;
+          font-size: 12px;
           color: #718096;
         }
-        .session-amount {
-          font-size: 12px;
-          font-weight: bold;
-          color: #8B5FBF;
-        }
-        .toggle-sessions-btn {
+
+        .show-more-button {
           width: 100%;
-          padding: 8px;
           background: linear-gradient(135deg, #8B5FBF 0%, #6A82FB 100%);
           color: white;
           border: none;
-          border-radius: 6px;
-          font-size: 12px;
-          margin-top: 10px;
+          padding: 12px;
+          border-radius: 12px;
+          font-size: 14px;
+          font-weight: bold;
+          margin-top: 16px;
           cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .show-more-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(139, 95, 191, 0.3);
+        }
+
+        /* تصميم متجاوب للجوال */
+        @media (max-width: 480px) {
+          .add-session-page {
+            padding: 0;
+          }
+
+          .page-header {
+            padding: 12px;
+          }
+
+          .page-title {
+            font-size: 18px;
+          }
+
+          .patient-info {
+            flex-direction: column;
+            gap: 4px;
+            align-items: flex-start;
+          }
+
+          .body-map-section {
+            padding: 8px;
+          }
+
+          .sessions-section {
+            margin: 8px;
+            padding: 12px;
+          }
+
+          .sessions-title {
+            font-size: 16px;
+          }
+
+          .session-main {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+          }
+
+          .session-details {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+          }
+
+          .session-card {
+            padding: 10px;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .page-title {
+            font-size: 16px;
+          }
+
+          .sessions-title {
+            font-size: 15px;
+          }
+
+          .session-area {
+            font-size: 13px;
+          }
+
+          .session-amount {
+            font-size: 13px;
+          }
         }
       `}</style>
     </div>

@@ -1,8 +1,7 @@
 // BodyMap3D.js
-import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, Text, useGLTF } from '@react-three/drei'
-import * as THREE from 'three'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { OrbitControls, useGLTF } from '@react-three/drei'
 import { ref, set, push, onValue } from 'firebase/database'
 import { db } from '../firebaseConfig'
 
@@ -49,33 +48,12 @@ function WomanModel({ selectedParts, togglePart, sessions }) {
   }, [togglePart])
 
   return (
-    <>
-      <primitive 
-        object={modelScene} 
-        onClick={handleClick} 
-        scale={0.4} 
-        position={[0, -1.5, 0]} 
-      />
-
-      {meshData.map(({ mesh, name }) => {
-        const sessionCount = sessions[name]?.length || 0
-        if (sessionCount === 0) return null
-        
-        const pos = mesh.getWorldPosition(new THREE.Vector3())
-        return (
-          <Text
-            key={name}
-            position={[pos.x, pos.y + 0.1, pos.z]}
-            fontSize={0.06}
-            color={colors.accent}
-            anchorX="center"
-            anchorY="bottom"
-          >
-            {sessionCount}
-          </Text>
-        )
-      })}
-    </>
+    <primitive 
+      object={modelScene} 
+      onClick={handleClick} 
+      scale={0.35}
+      position={[0, -1.2, 0]} 
+    />
   )
 }
 
@@ -90,9 +68,7 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
       medications: [],
       supplements: [],
       cosmetics: [],
-      habits: [],
-      treatments: [],
-      skinIssues: []
+      habits: []
     }
 
     // الحساسية
@@ -107,14 +83,7 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
       heartDisease: 'أمراض القلب',
       thyroid: 'الغدة الدرقية',
       anemia: 'فقر الدم',
-      pcod: 'تكيس المبايض',
-      immuneDisease: 'أمراض المناعة',
-      cancer: 'سرطان',
-      epilepsy: 'صرع',
-      bloodClot: 'تجلط الدم',
-      hormoneDisorder: 'اضطراب هرموني',
-      headache: 'صداع',
-      shortBreath: 'ضيق تنفس'
+      pcod: 'تكيس المبايض'
     }
 
     if (client.chronicConditions) {
@@ -130,14 +99,13 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
       info.supplements.push(client.supplementsType)
     }
 
-    if (client.dailyMedications?.medications && client.dailyMedications.type) {
+    if (client.dailyMedications?.type) {
       info.medications.push(client.dailyMedications.type)
     }
 
     // العادات
     if (client.smoking) info.habits.push('🚬 مدخن')
     if (client.pregnancy) info.habits.push('🤰 حامل')
-    if (client.energyDrinks) info.habits.push('⚡ مشروبات طاقة')
     if (client.exercise) info.habits.push('💪 يمارس الرياضة')
 
     return info
@@ -148,17 +116,16 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
 
   const sections = [
     { key: 'allergies', title: '🔴 الحساسية', color: colors.error },
-    { key: 'conditions', title: '🟠 الأمراض المزمنة', color: colors.warning },
+    { key: 'conditions', title: '🟠 الأمراض', color: colors.warning },
     { key: 'medications', title: '💊 الأدوية', color: colors.secondary },
-    { key: 'supplements', title: '💊 المكملات الغذائية', color: colors.primary },
-    { key: 'cosmetics', title: '🧴 المستحضرات المستخدمة', color: colors.success },
+    { key: 'supplements', title: '💊 المكملات', color: colors.primary },
     { key: 'habits', title: '📝 العادات', color: colors.warning }
   ]
 
   return (
     <div className="health-panel">
       <div className="health-header" onClick={onToggle}>
-        <h3>🩺 المعلومات الصحية للعميلة</h3>
+        <h3>🩺 المعلومات الصحية</h3>
         <span>{isOpen ? '▲' : '▼'}</span>
       </div>
 
@@ -166,7 +133,7 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
         <div className="health-content">
           {sections.map(({ key, title, color }) => 
             healthInfo[key]?.length > 0 && (
-              <div key={key} className="health-section" style={{ borderRightColor: color }}>
+              <div key={key} className="health-section" style={{ borderColor: color }}>
                 <div className="section-title" style={{ color }}>{title}</div>
                 <div className="section-content">{healthInfo[key].join('، ')}</div>
               </div>
@@ -178,10 +145,10 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
       <style jsx>{`
         .health-panel {
           background: ${colors.card};
-          border-radius: 10px;
-          margin-bottom: 10px;
+          border-radius: 12px;
+          margin-bottom: 12px;
           overflow: hidden;
-          border: 1px solid ${colors.primary}20;
+          border: 1px solid #e2e8f0;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .health-header {
@@ -199,7 +166,7 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
           font-weight: bold;
         }
         .health-content {
-          padding: 10px;
+          padding: 12px;
           background: ${colors.background};
           display: flex;
           flex-direction: column;
@@ -208,7 +175,7 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
         .health-section {
           padding: 8px;
           background: ${colors.card};
-          border-radius: 6px;
+          border-radius: 8px;
           border-right: 3px solid;
         }
         .section-title {
@@ -219,6 +186,19 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
         .section-content {
           font-size: 11px;
           color: ${colors.text};
+          line-height: 1.4;
+        }
+
+        @media (max-width: 480px) {
+          .health-header {
+            padding: 10px;
+          }
+          .health-header h3 {
+            font-size: 13px;
+          }
+          .health-content {
+            padding: 10px;
+          }
         }
       `}</style>
     </div>
@@ -226,7 +206,7 @@ function HealthInfoPanel({ client, isOpen, onToggle }) {
 }
 
 // 🔹 التطبيق الرئيسي
-export default function BodyMap3D({ client, onSaveSession, showSessions = false }) {
+export default function BodyMap3D({ client, onSaveSession }) {
   const [selectedParts, setSelectedParts] = useState([])
   const [sessions, setSessions] = useState({})
   const [showPanel, setShowPanel] = useState(false)
@@ -363,7 +343,7 @@ export default function BodyMap3D({ client, onSaveSession, showSessions = false 
 
       {/* خريطة الجسم */}
       <div className="body-map">
-        <Canvas camera={{ position: [0, 1.2, 4], fov: 45 }}>
+        <Canvas camera={{ position: [0, 1, 3.5], fov: 50 }}>
           <ambientLight intensity={0.8} />
           <directionalLight position={[2, 2, 2]} intensity={1} />
           <WomanModel
@@ -372,10 +352,10 @@ export default function BodyMap3D({ client, onSaveSession, showSessions = false 
             sessions={sessions}
           />
           <OrbitControls
-            enableZoom={false}
+            enableZoom={true}
             enablePan={false}
-            minPolarAngle={Math.PI / 2.5}
-            maxPolarAngle={Math.PI / 2.5}
+            minPolarAngle={Math.PI / 3}
+            maxPolarAngle={Math.PI / 1.8}
           />
         </Canvas>
       </div>
@@ -383,87 +363,134 @@ export default function BodyMap3D({ client, onSaveSession, showSessions = false 
       <style jsx>{`
         .body-map-container {
           width: 100%;
-          min-height: 100vh;
           background: ${colors.background};
-          padding: 8px;
-          font-family: system-ui, -apple-system, sans-serif;
+          border-radius: 16px;
+          padding: 12px;
           direction: rtl;
         }
         .stats-panel {
           background: ${colors.card};
-          padding: 12px;
-          border-radius: 10px;
-          margin-bottom: 10px;
+          padding: 16px;
+          border-radius: 12px;
+          margin-bottom: 12px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .stats-grid {
           display: flex;
-          gap: 8px;
-          margin-bottom: 12px;
+          gap: 10px;
+          margin-bottom: 16px;
         }
         .stat-card {
           flex: 1;
           background: ${colors.gradient};
           color: white;
-          padding: 10px;
-          border-radius: 8px;
+          padding: 12px;
+          border-radius: 10px;
           text-align: center;
         }
         .stat-label {
-          font-size: 11px;
+          font-size: 12px;
           opacity: 0.9;
+          margin-bottom: 4px;
         }
         .stat-value {
-          font-size: 18px;
+          font-size: 20px;
           font-weight: bold;
         }
         .add-session-btn {
           width: 100%;
-          padding: 12px;
+          padding: 14px;
           background: ${colors.gradient};
           color: white;
           border: none;
-          border-radius: 8px;
-          font-size: 14px;
+          border-radius: 10px;
+          font-size: 15px;
           font-weight: bold;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
           cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .add-session-btn:not(.disabled):hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(139, 95, 191, 0.3);
         }
         .add-session-btn.disabled {
-          background: #ccc;
+          background: #cbd5e0;
           cursor: not-allowed;
         }
         .cancel-btn {
           width: 100%;
-          padding: 8px;
+          padding: 10px;
           background: ${colors.textLight};
           color: white;
           border: none;
-          border-radius: 6px;
-          font-size: 12px;
+          border-radius: 8px;
+          font-size: 13px;
           cursor: pointer;
+          margin-bottom: 12px;
         }
         .selected-parts {
-          margin-top: 10px;
           display: flex;
           flex-wrap: wrap;
-          gap: 4px;
+          gap: 6px;
           justify-content: center;
         }
         .part-tag {
           background: ${colors.primary};
           color: white;
-          padding: 4px 8px;
-          border-radius: 12px;
-          font-size: 10px;
+          padding: 6px 10px;
+          border-radius: 14px;
+          font-size: 11px;
+          font-weight: bold;
         }
         .body-map {
-          height: 300px;
+          height: 320px;
           background: ${colors.card};
-          border-radius: 10px;
+          border-radius: 12px;
           overflow: hidden;
-          margin-bottom: 10px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* تصميم متجاوب للجوال */
+        @media (max-width: 480px) {
+          .body-map-container {
+            padding: 8px;
+          }
+          .stats-panel {
+            padding: 12px;
+          }
+          .stats-grid {
+            gap: 8px;
+          }
+          .stat-card {
+            padding: 10px;
+          }
+          .stat-label {
+            font-size: 11px;
+          }
+          .stat-value {
+            font-size: 18px;
+          }
+          .add-session-btn {
+            padding: 12px;
+            font-size: 14px;
+          }
+          .body-map {
+            height: 280px;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .stat-value {
+            font-size: 16px;
+          }
+          .add-session-btn {
+            font-size: 13px;
+            padding: 10px;
+          }
+          .body-map {
+            height: 250px;
+          }
         }
       `}</style>
     </div>
