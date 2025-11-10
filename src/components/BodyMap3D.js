@@ -2,18 +2,31 @@ import React, { useRef, useState, useEffect } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Text, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
-import { ref, set, get, push, onValue } from 'firebase/database'
+import { ref, set, get, push, onValue, remove } from 'firebase/database'
 import { db } from '../firebaseConfig'
+
+// 🎨 تدرجات الألوان الجديدة
+const colors = {
+  primary: '#8B5FBF',
+  secondary: '#6A82FB',
+  accent: '#FF6B8B',
+  background: '#F8FAFF',
+  card: '#FFFFFF',
+  text: '#2D3748',
+  textLight: '#718096',
+  success: '#48BB78',
+  warning: '#ED8936',
+  error: '#F56565',
+  gradient: 'linear-gradient(135deg, #8B5FBF 0%, #6A82FB 100%)',
+  gradientLight: 'linear-gradient(135deg, #8B5FBF20 0%, #6A82FB20 100%)'
+}
 
 // 🔹 نموذج الجسم
 function WomanModel({ selectedParts, togglePart, sessions, client }) {
   const { scene, camera } = useThree()
   const [meshData, setMeshData] = useState([])
-
-  // 🔹 استخدام useGLTF لتحميل النموذج مرة واحدة
   const { scene: modelScene } = useGLTF('/model.glb')
 
-  // 🔹 إعداد الـ meshes مرة واحدة
   useEffect(() => {
     const list = []
     modelScene.traverse((child) => {
@@ -25,10 +38,9 @@ function WomanModel({ selectedParts, togglePart, sessions, client }) {
     setMeshData(list)
   }, [modelScene])
 
-  // 🔹 تغيير اللون عند تحديد جزء
   useEffect(() => {
     meshData.forEach(({ mesh, name }) => {
-      mesh.material.color.set(selectedParts.includes(name) ? '#ff69b4' : '#ffffff')
+      mesh.material.color.set(selectedParts.includes(name) ? colors.primary : '#ffffff')
     })
   }, [selectedParts, meshData])
 
@@ -43,11 +55,10 @@ function WomanModel({ selectedParts, togglePart, sessions, client }) {
       <primitive 
         object={modelScene} 
         onClick={handleClick} 
-        scale={0.5} 
-        position={[0, -2, 0]} 
+        scale={0.4} 
+        position={[0, -1.5, 0]} 
       />
 
-      {/* 🔹 نص العدادات */}
       {meshData.map(({ mesh, name }) => {
         const pos = mesh.getWorldPosition(new THREE.Vector3())
         const sessionCount = sessions[name]?.length || 0
@@ -56,8 +67,8 @@ function WomanModel({ selectedParts, togglePart, sessions, client }) {
             <Text
               key={name}
               position={[pos.x, pos.y + 0.1, pos.z]}
-              fontSize={0.08}
-              color="red"
+              fontSize={0.06}
+              color={colors.accent}
               anchorX="center"
               anchorY="bottom"
             >
@@ -71,7 +82,7 @@ function WomanModel({ selectedParts, togglePart, sessions, client }) {
 }
 
 // 🔹 النافذة الجانبية
-function SessionPanel({ selectedParts, sessions, addSession, onClose, client, panelPos }) {
+function SessionPanel({ selectedParts, sessions, addSession, onClose, client }) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     notes: '',
@@ -80,31 +91,51 @@ function SessionPanel({ selectedParts, sessions, addSession, onClose, client, pa
     therapist: ''
   })
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const handleAdd = async () => {
+    if (isSubmitting) return
+    
     if (!formData.date) return alert('اختاري تاريخ الجلسة')
+    if (!formData.therapist) return alert('ادخلي اسم المعالج/ة')
+    if (!formData.amount) return alert('ادخلي المبلغ')
     if (selectedParts.length === 0) return alert('لم يتم اختيار أي مناطق')
     
-    // 🔹 إضافة جلسة لكل منطقة محددة
-    for (const partName of selectedParts) {
+    try {
+      setIsSubmitting(true)
+      
       const sessionData = {
-        ...formData,
-        partName,
+        date: formData.date,
+        notes: formData.notes,
+        paymentType: formData.paymentType,
+        amount: formData.amount,
+        therapist: formData.therapist,
         clientId: client.idNumber,
         clientName: client.fullName,
         timestamp: new Date().toISOString()
       }
       
-      await addSession(partName, sessionData)
+      const results = await addSession(selectedParts, sessionData)
+      
+      if (results.success) {
+        alert(`✅ تم إضافة ${selectedParts.length} جلسة بنجاح!`)
+        setFormData({ 
+          date: new Date().toISOString().split('T')[0], 
+          notes: '', 
+          paymentType: 'نقدي', 
+          amount: '', 
+          therapist: '' 
+        })
+        onClose()
+      } else {
+        alert(`⚠️ ${results.message}`)
+      }
+    } catch (error) {
+      console.error('Error adding sessions:', error)
+      alert('❌ حدث خطأ أثناء إضافة الجلسات')
+    } finally {
+      setIsSubmitting(false)
     }
-    
-    setFormData({ 
-      date: new Date().toISOString().split('T')[0], 
-      notes: '', 
-      paymentType: 'نقدي', 
-      amount: '', 
-      therapist: '' 
-    })
-    onClose() // إغلاق الفورم بعد الإضافة
   }
 
   const handleChange = (e) => {
@@ -114,168 +145,474 @@ function SessionPanel({ selectedParts, sessions, addSession, onClose, client, pa
     }))
   }
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleAdd()
-    }
-  }
-
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: `${panelPos.y}px`,
-        left: `${panelPos.x}px`,
-        background: 'white',
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.8)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '10px',
+      zIndex: 1000,
+      direction: 'rtl'
+    }}>
+      <div style={{
+        background: colors.card,
         borderRadius: '12px',
-        boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-        padding: '20px',
-        width: '320px',
-        maxHeight: '80vh',
-        direction: 'rtl',
-        zIndex: 1000,
-        border: '2px solid #ff69b4',
-        overflowY: 'auto'
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h3 style={{ margin: 0, color: '#ff69b4', fontSize: '18px' }}>💆‍♀️ إضافة جلسات</h3>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '18px',
-            cursor: 'pointer',
-            color: '#999',
-            width: '25px',
-            height: '25px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '50%',
-            hover: { background: '#f5f5f5' }
-          }}
-        >
-          ✕
-        </button>
-      </div>
-      
-      <div style={{ marginBottom: '15px' }}>
-        <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', color: '#333' }}>المناطق المحددة:</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '15px' }}>
-          {selectedParts.map(part => (
-            <span 
-              key={part}
-              style={{
-                background: '#ff69b4',
-                color: 'white',
-                padding: '5px 10px',
-                borderRadius: '15px',
-                fontSize: '12px'
-              }}
-            >
-              {part}
-            </span>
-          ))}
+        padding: '15px',
+        width: '100%',
+        maxWidth: '400px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h3 style={{ margin: 0, color: colors.primary, fontSize: '18px' }}>💆‍♀️ إضافة جلسات</h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '20px',
+              cursor: 'pointer',
+              color: colors.textLight
+            }}
+          >
+            ✕
+          </button>
         </div>
-        <p style={{ textAlign: 'center', margin: '5px 0 15px 0', color: '#666', fontSize: '14px' }}>
-          سيتم إضافة {selectedParts.length} جلسة
-        </p>
-      </div>
 
-      <div style={{ marginBottom: '15px' }}>
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#333', fontSize: '14px' }}>
-            تاريخ الجلسة *
-          </label>
+        <div style={{ marginBottom: '15px' }}>
+          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: colors.text }}>المناطق المحددة ({selectedParts.length}):</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '10px' }}>
+            {selectedParts.map(part => (
+              <span key={part} style={{
+                background: colors.gradient,
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '12px',
+                fontSize: '12px'
+              }}>
+                {part}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '10px' }}>
           <input
             type="date"
             name="date"
             value={formData.date}
             onChange={handleChange}
-            onKeyPress={handleKeyPress}
             style={{
               width: '100%',
               padding: '10px',
               borderRadius: '8px',
-              border: '2px solid #ddd',
-              fontSize: '14px'
+              border: `1px solid ${colors.primary}30`,
+              fontSize: '14px',
+              marginBottom: '10px'
             }}
           />
         </div>
-      
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#333', fontSize: '14px' }}>
-            ملاحظات إضافية
-          </label>
-          <textarea
-            name="notes"
-            value={formData.notes}
+
+        <div style={{ marginBottom: '10px' }}>
+          <input
+            type="text"
+            name="therapist"
+            value={formData.therapist}
+            onChange={handleChange}
+            placeholder="اسم المعالج/ة"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '8px',
+              border: `1px solid ${colors.primary}30`,
+              fontSize: '14px',
+              marginBottom: '10px'
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '10px' }}>
+          <input
+            type="number"
+            name="amount"
+            value={formData.amount}
+            onChange={handleChange}
+            placeholder="المبلغ (شيقل)"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '8px',
+              border: `1px solid ${colors.primary}30`,
+              fontSize: '14px',
+              marginBottom: '10px'
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '10px' }}>
+          <select
+            name="paymentType"
+            value={formData.paymentType}
             onChange={handleChange}
             style={{
               width: '100%',
               padding: '10px',
               borderRadius: '8px',
-              border: '2px solid #ddd',
-              minHeight: '60px',
-              resize: 'vertical',
-              fontSize: '14px'
+              border: `1px solid ${colors.primary}30`,
+              fontSize: '14px',
+              marginBottom: '10px'
             }}
-            placeholder="أدخل ملاحظات إضافية"
+          >
+            <option value="نقدي">نقدي</option>
+            <option value="تحويل بنكي">تحويل بنكي</option>
+            <option value="بطاقة ائتمان">بطاقة ائتمان</option>
+          </select>
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            placeholder="ملاحظات إضافية"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '8px',
+              border: `1px solid ${colors.primary}30`,
+              minHeight: '60px',
+              fontSize: '14px',
+              resize: 'vertical'
+            }}
           />
         </div>
-        
+
         <button
           onClick={handleAdd}
+          disabled={isSubmitting}
           style={{
             width: '100%',
-            background: '#ff69b4',
+            background: colors.gradient,
             color: 'white',
             border: 'none',
             padding: '12px',
             borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
+            fontSize: '16px',
             fontWeight: 'bold',
-            transition: 'background 0.3s'
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            opacity: isSubmitting ? 0.6 : 1
           }}
-          onMouseOver={(e) => e.target.style.background = '#e0559c'}
-          onMouseOut={(e) => e.target.style.background = '#ff69b4'}
         >
-          إضافة الجلسات ({selectedParts.length})
+          {isSubmitting ? 'جاري الإضافة...' : `إضافة ${selectedParts.length} جلسة`}
         </button>
       </div>
     </div>
   )
 }
 
-// 🔹 التطبيق الرئيسي
+// 🔹 مكون المعلومات الصحية الكامل
+function HealthInfoPanel({ client, isOpen, onToggle }) {
+  const getHealthInfo = () => {
+    if (!client) return {};
+
+    const healthInfo = {
+      allergies: [],
+      conditions: [],
+      medications: [],
+      supplements: [],
+      cosmetics: [],
+      habits: [],
+      treatments: [],
+      skinIssues: []
+    };
+    
+    // الحساسية
+    if (client.allergyMilk) healthInfo.allergies.push('حليب');
+    if (client.allergyBread) healthInfo.allergies.push('خبز');
+    if (client.allergiesText && client.allergiesText !== 'لا') healthInfo.allergies.push(client.allergiesText);
+    
+    // الأمراض المزمنة
+    if (client.chronicConditions) {
+      Object.entries(client.chronicConditions).forEach(([condition, hasCondition]) => {
+        if (hasCondition) {
+          const conditionNames = {
+            'diabetes': 'سكري',
+            'bloodPressure': 'ضغط الدم',
+            'heartDisease': 'أمراض القلب',
+            'thyroid': 'الغدة الدرقية',
+            'anemia': 'فقر الدم',
+            'pcod': 'تكيس المبايض',
+            'immuneDisease': 'أمراض المناعة',
+            'cancer': 'سرطان',
+            'epilepsy': 'صرع',
+            'bloodClot': 'تجلط الدم',
+            'hormoneDisorder': 'اضطراب هرموني',
+            'headache': 'صداع',
+            'shortBreath': 'ضيق تنفس'
+          };
+          healthInfo.conditions.push(conditionNames[condition] || condition);
+        }
+      });
+    }
+
+    // المكملات
+    if (client.supplements && client.supplementsType) {
+      healthInfo.supplements.push(client.supplementsType);
+    }
+
+    // الأدوية
+    if (client.dailyMedications && client.dailyMedications.medications && client.dailyMedications.type) {
+      healthInfo.medications.push(client.dailyMedications.type);
+    }
+
+    // الأدوية الإضافية
+    if (client.dailyMedicationsExtra) {
+      if (client.dailyMedicationsExtra.antidepressant) healthInfo.medications.push('مضادات الاكتئاب');
+      if (client.dailyMedicationsExtra.contraceptive) healthInfo.medications.push('مانع الحمل');
+      if (client.dailyMedicationsExtra.sedative) healthInfo.medications.push('مهدئات');
+      if (client.dailyMedicationsExtra.sleepingPill) healthInfo.medications.push('حبوب نوم');
+      if (client.dailyMedicationsExtra.other) healthInfo.medications.push(client.dailyMedicationsExtra.other);
+    }
+
+    // مستحضرات التجميل
+    if (client.cosmetics) {
+      if (client.cosmetics.biotica) healthInfo.cosmetics.push('بايوتيكا');
+      if (client.cosmetics.roaccutane) healthInfo.cosmetics.push('رواكيوتان');
+      if (client.cosmetics.exfoliation) healthInfo.cosmetics.push('مقشرات');
+      if (client.cosmetics.moisturizer) healthInfo.cosmetics.push('مرطبات');
+      if (client.cosmetics.sunscreen) healthInfo.cosmetics.push('واقي شمس');
+      if (client.cosmetics.soap) healthInfo.cosmetics.push('صابون');
+      if (client.cosmetics.serum) healthInfo.cosmetics.push('سيروم');
+      if (client.cosmetics.otherMedications) healthInfo.cosmetics.push(client.cosmetics.otherMedications);
+    }
+
+    // العادات
+    if (client.smoking) healthInfo.habits.push('🚬 مدخن');
+    if (client.pregnancy) healthInfo.habits.push('🤰 حامل');
+    if (client.energyDrinks) healthInfo.habits.push('⚡ مشروبات طاقة');
+    if (client.exercise) healthInfo.habits.push('💪 يمارس الرياضة');
+    
+    // العلاجات السابقة
+    if (client.previousTreatments && client.previousTreatments !== 'لا') {
+      healthInfo.treatments.push(client.previousTreatments);
+    }
+
+    // أمراض الجلد
+    if (client.skinDiseases) {
+      healthInfo.skinIssues.push(client.skinDetails || 'أمراض جلدية');
+    }
+
+    return healthInfo;
+  }
+
+  const healthInfo = getHealthInfo();
+  const hasAnyInfo = Object.values(healthInfo).some(arr => arr.length > 0);
+
+  if (!hasAnyInfo) return null;
+
+  return (
+    <div style={{ 
+      background: colors.card, 
+      borderRadius: '10px', 
+      marginBottom: '10px', 
+      overflow: 'hidden',
+      border: `1px solid ${colors.primary}20`,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+    }}>
+      <div 
+        onClick={onToggle}
+        style={{
+          padding: '12px',
+          background: colors.gradient,
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer'
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>🩺 المعلومات الصحية للعميلة</h3>
+        <span style={{ fontSize: '12px' }}>{isOpen ? '▲' : '▼'}</span>
+      </div>
+
+      {isOpen && (
+        <div style={{ padding: '10px', background: colors.background }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            
+            {/* الحساسية */}
+            {healthInfo.allergies.length > 0 && (
+              <div style={{
+                padding: '8px',
+                background: colors.card,
+                borderRadius: '6px',
+                borderRight: `3px solid ${colors.error}`
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.error, marginBottom: '4px' }}>
+                  🔴 الحساسية
+                </div>
+                <div style={{ fontSize: '11px', color: colors.text }}>
+                  {healthInfo.allergies.join('، ')}
+                </div>
+              </div>
+            )}
+
+            {/* الأمراض المزمنة */}
+            {healthInfo.conditions.length > 0 && (
+              <div style={{
+                padding: '8px',
+                background: colors.card,
+                borderRadius: '6px',
+                borderRight: `3px solid ${colors.warning}`
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.warning, marginBottom: '4px' }}>
+                  🟠 الأمراض المزمنة
+                </div>
+                <div style={{ fontSize: '11px', color: colors.text }}>
+                  {healthInfo.conditions.join('، ')}
+                </div>
+              </div>
+            )}
+
+            {/* الأدوية */}
+            {healthInfo.medications.length > 0 && (
+              <div style={{
+                padding: '8px',
+                background: colors.card,
+                borderRadius: '6px',
+                borderRight: `3px solid ${colors.secondary}`
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.secondary, marginBottom: '4px' }}>
+                  💊 الأدوية
+                </div>
+                <div style={{ fontSize: '11px', color: colors.text }}>
+                  {healthInfo.medications.join('، ')}
+                </div>
+              </div>
+            )}
+
+            {/* المكملات */}
+            {healthInfo.supplements.length > 0 && (
+              <div style={{
+                padding: '8px',
+                background: colors.card,
+                borderRadius: '6px',
+                borderRight: `3px solid ${colors.primary}`
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.primary, marginBottom: '4px' }}>
+                  💊 المكملات الغذائية
+                </div>
+                <div style={{ fontSize: '11px', color: colors.text }}>
+                  {healthInfo.supplements.join('، ')}
+                </div>
+              </div>
+            )}
+
+            {/* المستحضرات */}
+            {healthInfo.cosmetics.length > 0 && (
+              <div style={{
+                padding: '8px',
+                background: colors.card,
+                borderRadius: '6px',
+                borderRight: `3px solid ${colors.success}`
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.success, marginBottom: '4px' }}>
+                  🧴 المستحضرات المستخدمة
+                </div>
+                <div style={{ fontSize: '11px', color: colors.text }}>
+                  {healthInfo.cosmetics.join('، ')}
+                </div>
+              </div>
+            )}
+
+            {/* العادات */}
+            {healthInfo.habits.length > 0 && (
+              <div style={{
+                padding: '8px',
+                background: colors.card,
+                borderRadius: '6px',
+                borderRight: `3px solid ${colors.warning}`
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.warning, marginBottom: '4px' }}>
+                  📝 العادات
+                </div>
+                <div style={{ fontSize: '11px', color: colors.text }}>
+                  {healthInfo.habits.join('، ')}
+                </div>
+              </div>
+            )}
+
+            {/* العلاجات السابقة */}
+            {healthInfo.treatments.length > 0 && (
+              <div style={{
+                padding: '8px',
+                background: colors.card,
+                borderRadius: '6px',
+                borderRight: `3px solid #34495e`
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#34495e', marginBottom: '4px' }}>
+                  🩺 العلاجات السابقة
+                </div>
+                <div style={{ fontSize: '11px', color: colors.text }}>
+                  {healthInfo.treatments.join('، ')}
+                </div>
+              </div>
+            )}
+
+            {/* أمراض الجلد */}
+            {healthInfo.skinIssues.length > 0 && (
+              <div style={{
+                padding: '8px',
+                background: colors.card,
+                borderRadius: '6px',
+                borderRight: `3px solid ${colors.error}`
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.error, marginBottom: '4px' }}>
+                  🔴 أمراض الجلد
+                </div>
+                <div style={{ fontSize: '11px', color: colors.text }}>
+                  {healthInfo.skinIssues.join('، ')}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 🔹 التطبيق الرئيسي - متجاوب تماماً مع الموبايل
 export default function BodyMap3D({ client, onSaveSession }) {
   const [selectedParts, setSelectedParts] = useState([])
-  const [panelPos, setPanelPos] = useState({ x: 0, y: 0 })
   const [sessions, setSessions] = useState({})
   const [showAllSessions, setShowAllSessions] = useState(false)
   const [showPanel, setShowPanel] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [healthInfoOpen, setHealthInfoOpen] = useState(false)
 
-  // 🔹 جلب الجلسات من Firebase
   useEffect(() => {
     if (!client?.idNumber) return
-
     const sessionsRef = ref(db, `sessions/${client.idNumber}`)
     
     const unsubscribe = onValue(sessionsRef, (snapshot) => {
       if (snapshot.exists()) {
         const sessionsData = snapshot.val()
-        // تنظيم الجلسات حسب المنطقة
         const organizedSessions = {}
         
-        Object.values(sessionsData).forEach(session => {
-          const part = session.partName || 'غير محدد'
-          if (!organizedSessions[part]) {
-            organizedSessions[part] = []
+        Object.entries(sessionsData).forEach(([sessionId, session]) => {
+          if (typeof session === 'object' && session.partName && session.date) {
+            const part = session.partName
+            if (!organizedSessions[part]) organizedSessions[part] = []
+            organizedSessions[part].push({ ...session, id: sessionId })
           }
-          organizedSessions[part].push(session)
         })
         
         setSessions(organizedSessions)
@@ -288,13 +625,7 @@ export default function BodyMap3D({ client, onSaveSession }) {
   }, [client.idNumber])
 
   const togglePart = (partName) => {
-    setSelectedParts(prev => {
-      if (prev.includes(partName)) {
-        return prev.filter(part => part !== partName)
-      } else {
-        return [...prev, partName]
-      }
-    })
+    setSelectedParts(prev => prev.includes(partName) ? prev.filter(part => part !== partName) : [...prev, partName])
   }
 
   const openSessionPanel = () => {
@@ -302,125 +633,150 @@ export default function BodyMap3D({ client, onSaveSession }) {
       alert('يرجى تحديد منطقة واحدة على الأقل')
       return
     }
-    
-    // حساب موقع الفورم في وسط الشاشة
-    const x = (window.innerWidth - 320) / 2
-    const y = (window.innerHeight - 400) / 2
-    setPanelPos({ x, y })
     setShowPanel(true)
   }
 
-  const addSession = async (part, sessionData) => {
+  const addSession = async (parts, sessionData) => {
     try {
-      const sessionRef = ref(db, `sessions/${client.idNumber}`)
-      const newSessionRef = push(sessionRef)
+      setIsLoading(true)
+      let successCount = 0
       
-      await set(newSessionRef, {
-        ...sessionData,
-        id: newSessionRef.key,
-        clientId: client.idNumber,
-        clientName: client.fullName
-      })
-
-      if (onSaveSession) {
-        onSaveSession({
-          ...sessionData,
-          id: newSessionRef.key
-        })
+      for (const partName of parts) {
+        try {
+          const sessionRef = ref(db, `sessions/${client.idNumber}`)
+          const newSessionRef = push(sessionRef)
+          
+          const sessionToSave = {
+            ...sessionData,
+            partName: partName,
+            id: newSessionRef.key,
+            clientId: client.idNumber,
+            clientName: client.fullName,
+            timestamp: new Date().toISOString()
+          }
+          
+          await set(newSessionRef, sessionToSave)
+          if (onSaveSession) onSaveSession(sessionToSave)
+          successCount++
+        } catch (error) {
+          console.error(`Error saving session for ${partName}:`, error)
+        }
       }
+      
+      return { success: true, message: `تم إضافة ${successCount} جلسة بنجاح!` }
     } catch (error) {
-      console.error('Error saving session:', error)
-      alert('حدث خطأ أثناء حفظ الجلسة')
+      return { success: false, message: 'حدث خطأ أثناء حفظ الجلسات' }
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleAddSessions = async (sessionData) => {
-    try {
-      for (const partName of selectedParts) {
-        await addSession(partName, {
-          ...sessionData,
-          partName
-        })
-      }
-      alert(`تم إضافة ${selectedParts.length} جلسة بنجاح!`)
-      setSelectedParts([])
-    } catch (error) {
-      console.error('Error saving sessions:', error)
-      alert('حدث خطأ أثناء حفظ الجلسات')
-    }
-  }
-
-  // 🔹 جمع جميع الجلسات
   const allSessions = Object.values(sessions).flat()
-  // ترتيب الجلسات من الأحدث إلى الأقدم
   const sortedSessions = allSessions.sort((a, b) => new Date(b.date) - new Date(a.date))
-  const displayedSessions = showAllSessions ? sortedSessions : sortedSessions.slice(0, 5)
+  const displayedSessions = showAllSessions ? sortedSessions : sortedSessions.slice(0, 3)
 
   return (
-    <div style={{ width: '100%', minHeight: '100vh', background: '#f8f9fa', position: 'relative' }}>
+    <div style={{ 
+      width: '100%', 
+      minHeight: '100vh', 
+      background: colors.background,
+      padding: '8px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      direction: 'rtl'
+    }}>
       
-      {/* 🔹 معلومات العميل */}
-      <div style={{ background: 'white', padding: '20px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-        <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-          <h4 style={{ color: '#6c757d', margin: 0, fontSize: '14px' }}>عميل رقم {client.idNumber}</h4>
-          <h2 style={{ color: '#2c3e50', margin: '5px 0', fontSize: '24px' }}>{client.fullName}</h2>
-          <p style={{ color: '#666', margin: '5px 0' }}>📞 {client.phone}</p>
-          <p style={{ color: '#666', margin: '5px 0' }}>🩺 عدد الجلسات: {allSessions.length}</p>
+      {/* 🔹 المعلومات الصحية الكاملة */}
+      <HealthInfoPanel 
+        client={client}
+        isOpen={healthInfoOpen}
+        onToggle={() => setHealthInfoOpen(!healthInfoOpen)}
+      />
+
+      {/* 🔹 الإحصائيات والأزرار */}
+      <div style={{ 
+        background: colors.card, 
+        padding: '12px', 
+        borderRadius: '10px', 
+        marginBottom: '10px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          gap: '8px', 
+          marginBottom: '12px'
+        }}>
+          <div style={{ 
+            flex: 1, 
+            background: colors.gradient, 
+            color: 'white', 
+            padding: '10px', 
+            borderRadius: '8px', 
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '11px', opacity: 0.9 }}>إجمالي الجلسات</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{allSessions.length}</div>
+          </div>
+          <div style={{ 
+            flex: 1, 
+            background: colors.gradient, 
+            color: 'white', 
+            padding: '10px', 
+            borderRadius: '8px', 
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '11px', opacity: 0.9 }}>المناطق المحددة</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{selectedParts.length}</div>
+          </div>
         </div>
 
-        {/* 🔹 زر إضافة الجلسات */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
+        <button
+          onClick={openSessionPanel}
+          disabled={selectedParts.length === 0 || isLoading}
+          style={{
+            width: '100%',
+            padding: '12px',
+            background: selectedParts.length > 0 ? colors.gradient : '#ccc',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            marginBottom: '8px',
+            cursor: selectedParts.length > 0 ? 'pointer' : 'not-allowed'
+          }}
+        >
+          {isLoading ? 'جاري المعالجة...' : `إضافة جلسات (${selectedParts.length})`}
+        </button>
+        
+        {selectedParts.length > 0 && (
           <button
-            onClick={openSessionPanel}
-            disabled={selectedParts.length === 0}
+            onClick={() => setSelectedParts([])}
             style={{
-              padding: '10px 20px',
-              background: selectedParts.length > 0 ? '#ff69b4' : '#ccc',
+              width: '100%',
+              padding: '8px',
+              background: colors.textLight,
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
-              cursor: selectedParts.length > 0 ? 'pointer' : 'not-allowed',
-              fontSize: '14px',
-              fontWeight: 'bold'
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer'
             }}
           >
-            إضافة جلسات للمناطق المحددة ({selectedParts.length})
+            إلغاء التحديد
           </button>
-          
-          {selectedParts.length > 0 && (
-            <button
-              onClick={() => setSelectedParts([])}
-              style={{
-                padding: '10px 15px',
-                background: '#6c757d',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              إلغاء التحديد
-            </button>
-          )}
-        </div>
+        )}
 
-        {/* 🔹 المناطق المحددة */}
         {selectedParts.length > 0 && (
-          <div style={{ marginTop: '15px', textAlign: 'center' }}>
-            <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '14px' }}>المناطق المحددة:</p>
-            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '5px' }}>
+          <div style={{ marginTop: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
               {selectedParts.map(part => (
-                <span 
-                  key={part}
-                  style={{
-                    background: '#ff69b4',
-                    color: 'white',
-                    padding: '5px 10px',
-                    borderRadius: '15px',
-                    fontSize: '12px'
-                  }}
-                >
+                <span key={part} style={{
+                  background: colors.primary,
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontSize: '10px'
+                }}>
                   {part}
                 </span>
               ))}
@@ -429,18 +785,18 @@ export default function BodyMap3D({ client, onSaveSession }) {
         )}
       </div>
 
-      {/* 🔹 خريطة الجسم */}
+      {/* 🔹 خريطة الجسم - مصغرة للجوال */}
       <div style={{ 
-        height: '500px', 
-        background: 'white', 
-        borderRadius: '12px', 
+        height: '300px', 
+        background: colors.card, 
+        borderRadius: '10px', 
         overflow: 'hidden', 
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
-        position: 'relative' 
+        marginBottom: '10px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
-        <Canvas camera={{ position: [0, 1.4, 5], fov: 40 }}>
-          <ambientLight intensity={1} />
-          <directionalLight position={[3, 3, 3]} intensity={2} />
+        <Canvas camera={{ position: [0, 1.2, 4], fov: 45 }}>
+          <ambientLight intensity={0.8} />
+          <directionalLight position={[2, 2, 2]} intensity={1} />
           <WomanModel
             selectedParts={selectedParts}
             togglePart={togglePart}
@@ -456,65 +812,94 @@ export default function BodyMap3D({ client, onSaveSession }) {
         </Canvas>
       </div>
 
-      {/* 🔹 فورم إضافة الجلسات */}
+      {/* 🔹 نافذة إضافة الجلسات */}
       {showPanel && (
         <SessionPanel
           selectedParts={selectedParts}
           sessions={sessions}
-          addSession={handleAddSessions}
+          addSession={addSession}
           onClose={() => setShowPanel(false)}
           client={client}
-          panelPos={panelPos}
         />
       )}
 
-      {/* 🔹 جدول الجلسات */}
-      <div style={{ background: 'white', borderRadius: '12px', padding: '20px', marginTop: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-        <h3 style={{ color: '#2c3e50', marginBottom: '15px' }}>📋 سجل الجلسات</h3>
+      {/* 🔹 جدول الجلسات - مبسط للجوال */}
+      <div style={{ 
+        background: colors.card, 
+        borderRadius: '10px', 
+        padding: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        <h3 style={{ 
+          color: colors.primary, 
+          marginBottom: '10px', 
+          textAlign: 'center',
+          fontSize: '16px'
+        }}>
+          📋 سجل الجلسات
+        </h3>
         
         {allSessions.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>لا توجد جلسات مسجلة بعد</p>
+          <p style={{ textAlign: 'center', color: colors.textLight, padding: '20px', fontSize: '14px' }}>
+            لا توجد جلسات مسجلة بعد
+          </p>
         ) : (
           <>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f8f9fa' }}>
-                    <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #dee2e6' }}>التاريخ</th>
-                    <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #dee2e6' }}>المنطقة</th>
-                    <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #dee2e6' }}>ملاحظات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedSessions.map((session, index) => (
-                    <tr key={session.id || index} style={{ borderBottom: '1px solid #dee2e6' }}>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>{session.date}</td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>{session.partName || 'غير محدد'}</td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>{session.notes || 'لا توجد'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {displayedSessions.map((session, index) => (
+                <div key={session.id || index} style={{
+                  padding: '8px',
+                  borderBottom: `1px solid ${colors.primary}20`,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.text }}>
+                      {session.partName || 'غير محدد'}
+                    </div>
+                    <div style={{ fontSize: '10px', color: colors.textLight }}>
+                      {session.date} - {session.therapist}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: colors.primary }}>
+                    {session.amount} ش
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {allSessions.length > 5 && (
+            {allSessions.length > 3 && (
               <button
                 onClick={() => setShowAllSessions(!showAllSessions)}
                 style={{
-                  marginTop: '15px',
-                  padding: '8px 16px',
-                  background: '#6c757d',
+                  width: '100%',
+                  padding: '8px',
+                  background: colors.gradient,
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
+                  fontSize: '12px',
+                  marginTop: '10px',
                   cursor: 'pointer'
                 }}
               >
-                {showAllSessions ? 'عرض أقل' : 'عرض المزيد'}
+                {showAllSessions ? 'عرض أقل' : `عرض الكل (${allSessions.length})`}
               </button>
             )}
           </>
         )}
+      </div>
+
+      {/* 🔹 تذييل الصفحة */}
+      <div style={{
+        textAlign: 'center',
+        padding: '15px',
+        color: colors.textLight,
+        fontSize: '12px',
+        marginTop: '10px'
+      }}>
+        <p>نظام إدارة جلسات العلاج</p>
       </div>
     </div>
   )
