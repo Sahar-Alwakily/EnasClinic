@@ -63,70 +63,46 @@ export default function PatientForm() {
   const [patientSignature, setPatientSignature] = useState("");
   const [date, setDate] = useState("");
 
-  // دالة لتحويل التاريخ من yyyy-mm-dd إلى dd/mm/yyyy
-  const formatDateToDDMMYYYY = (dateString) => {
-    if (!dateString) return "";
-    const [year, month, day] = dateString.split('-');
-    return `${day}/${month}/${year}`;
-  };
-
-  // دالة لتحويل التاريخ من dd/mm/yyyy إلى yyyy-mm-dd
-  const formatDateToYYYYMMDD = (dateString) => {
-    if (!dateString) return "";
-    const [day, month, year] = dateString.split('/');
-    return `${year}-${month}-${day}`;
-  };
-
+  // دالة محسنة لأزرار نعم/لا
   const renderYesNo = (label, value, setValue, isSmall = false) => (
     <div className={`mb-3 ${isSmall ? 'bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl' : ''}`}>
       <label className="font-medium text-gray-800 text-sm mb-1 block">{label}:</label>
       <div className="flex gap-3 mt-1">
-        <label className="flex items-center gap-2 cursor-pointer group">
+        <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="radio"
-            name={label}
+            name={`${label}-yesno`}
             checked={value === true}
             onChange={() => setValue(true)}
-            className="hidden"
+            className="w-4 h-4 text-emerald-500 focus:ring-emerald-400"
           />
-          <div 
-            className={`relative w-4 h-4 rounded-full border-2 transition-all duration-200 ${
-              value === true 
-                ? 'border-emerald-500 bg-emerald-500' 
-                : 'border-gray-300 group-hover:border-emerald-400'
-            }`}
-            onClick={() => setValue(true)}
-          >
-            {value === true && (
-              <div className="absolute inset-0.5 bg-white rounded-full"></div>
-            )}
-          </div>
-          <span className="text-gray-700 text-sm group-hover:text-emerald-600 transition-colors">نعم</span>
+          <span className="text-gray-700 text-sm">نعم</span>
         </label>
-        <label className="flex items-center gap-2 cursor-pointer group">
+        <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="radio"
-            name={label}
+            name={`${label}-yesno`}
             checked={value === false}
             onChange={() => setValue(false)}
-            className="hidden"
+            className="w-4 h-4 text-rose-500 focus:ring-rose-400"
           />
-          <div 
-            className={`relative w-4 h-4 rounded-full border-2 transition-all duration-200 ${
-              value === false 
-                ? 'border-rose-500 bg-rose-500' 
-                : 'border-gray-300 group-hover:border-rose-400'
-            }`}
-            onClick={() => setValue(false)}
-          >
-            {value === false && (
-              <div className="absolute inset-0.5 bg-white rounded-full"></div>
-            )}
-          </div>
-          <span className="text-gray-700 text-sm group-hover:text-rose-600 transition-colors">لا</span>
+          <span className="text-gray-700 text-sm">لا</span>
         </label>
       </div>
     </div>
+  );
+
+  // دالة محسنة للـ checkboxes
+  const renderCheckbox = (label, checked, setChecked, isSmall = false) => (
+    <label className={`flex items-center gap-2 cursor-pointer ${isSmall ? 'text-sm' : ''}`}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => setChecked(e.target.checked)}
+        className="w-4 h-4 text-amber-500 focus:ring-amber-400 rounded"
+      />
+      <span className="text-gray-700">{label}</span>
+    </label>
   );
 
   const handleSubmit = async (e) => {
@@ -142,7 +118,7 @@ export default function PatientForm() {
       fullName,
       idNumber,
       phone,
-      birthDate: formatDateToDDMMYYYY(birthDate), // تحويل تنسيق التاريخ
+      birthDate,
       healthStatus,
       exercise,
       pregnancy,
@@ -162,7 +138,7 @@ export default function PatientForm() {
       dailyMedicationsExtra,
       previousTreatments,
       patientSignature,
-      date: formatDateToDDMMYYYY(date), // تحويل تنسيق التاريخ
+      date,
       createdAt: new Date().toISOString(),
     };
 
@@ -247,16 +223,10 @@ export default function PatientForm() {
                   onChange={(e) => setBirthDate(e.target.value)} 
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all duration-200 bg-white/50 text-sm"
                 />
-                {birthDate && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    التنسيق: {formatDateToDDMMYYYY(birthDate)}
-                  </p>
-                )}
               </div>
             </div>
           </div>
 
-          {/* باقي المكونات بدون تغيير */}
           {/* الوضع الصحي العام */}
           <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
             <SectionHeader title="الوضع الصحي العام" icon="💊" />
@@ -295,56 +265,147 @@ export default function PatientForm() {
               </div>
               <div className="space-y-3">
                 <label className="block text-xs font-medium text-gray-700 mb-1">حساسيات شائعة</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={allergyBread}
-                      onChange={(e) => setAllergyBread(e.target.checked)}
-                      className="hidden"
-                    />
-                    <div 
-                      className={`relative w-4 h-4 rounded border transition-all duration-200 ${
-                        allergyBread 
-                          ? 'border-amber-500 bg-amber-500' 
-                          : 'border-gray-300 group-hover:border-amber-400'
-                      }`}
-                      onClick={() => setAllergyBread(!allergyBread)}
-                    >
-                      {allergyBread && (
-                        <div className="absolute inset-0.5 bg-white rounded-sm"></div>
-                      )}
-                    </div>
-                    <span className="text-gray-700 text-sm group-hover:text-amber-600 transition-colors">حساسية الخبز</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={allergyMilk}
-                      onChange={(e) => setAllergyMilk(e.target.checked)}
-                      className="hidden"
-                    />
-                    <div 
-                      className={`relative w-4 h-4 rounded border transition-all duration-200 ${
-                        allergyMilk 
-                          ? 'border-amber-500 bg-amber-500' 
-                          : 'border-gray-300 group-hover:border-amber-400'
-                      }`}
-                      onClick={() => setAllergyMilk(!allergyMilk)}
-                    >
-                      {allergyMilk && (
-                        <div className="absolute inset-0.5 bg-white rounded-sm"></div>
-                      )}
-                    </div>
-                    <span className="text-gray-700 text-sm group-hover:text-amber-600 transition-colors">حساسية الحليب</span>
-                  </label>
+                <div className="flex flex-col gap-3">
+                  {renderCheckbox("حساسية الخبز", allergyBread, setAllergyBread)}
+                  {renderCheckbox("حساسية الحليب", allergyMilk, setAllergyMilk)}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* باقي الأقسام تبقى كما هي بدون تغيير */}
-          {/* ... */}
+          {/* المكملات الغذائية والأدوية */}
+          <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
+            <SectionHeader title="المكملات الغذائية والأدوية" icon="💊" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                {renderYesNo("مكملات غذائية", supplements, setSupplements)}
+                {supplements && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">نوع المكملات</label>
+                    <input 
+                      type="text" 
+                      placeholder="نوع المكملات..." 
+                      value={supplementsType} 
+                      onChange={(e) => setSupplementsType(e.target.value)} 
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all duration-200 bg-white/50 text-sm"
+                    />
+                  </div>
+                )}
+                {renderYesNo("أدوية يومية", dailyMedications.medications, (val) => setDailyMedications(prev => ({ ...prev, medications: val })))}
+                {dailyMedications.medications && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">نوع الأدوية</label>
+                    <input 
+                      type="text" 
+                      placeholder="نوع الأدوية..." 
+                      value={dailyMedications.type} 
+                      onChange={(e) => setDailyMedications(prev => ({ ...prev, type: e.target.value }))} 
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all duration-200 bg-white/50 text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-4">
+                {renderYesNo("مشروبات الطاقة", energyDrinks, setEnergyDrinks)}
+                {renderYesNo("تدخين", smoking, setSmoking)}
+              </div>
+            </div>
+          </div>
+
+          {/* الأمراض الجلدية */}
+          <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
+            <SectionHeader title="الأمراض الجلدية" icon="🔬" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                {renderYesNo("هل تعاني من أمراض جلدية؟", skinDiseases, setSkinDiseases)}
+              </div>
+              {skinDiseases && (
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">تفاصيل الأمراض الجلدية</label>
+                  <input 
+                    type="text" 
+                    placeholder="وصف الأمراض الجلدية..." 
+                    value={skinDetails} 
+                    onChange={(e) => setSkinDetails(e.target.value)} 
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all duration-200 bg-white/50 text-sm"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* الأمراض المزمنة */}
+          <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
+            <SectionHeader title="الأمراض المزمنة والحالات الطبية" icon="❤️" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Object.keys(chronicConditions).map((key) => (
+                <div key={key} className="bg-gradient-to-br from-slate-50 to-blue-50/50 p-3 rounded-xl border border-blue-100/50">
+                  {renderYesNo(key, chronicConditions[key], (val) => setChronicConditions(prev => ({ ...prev, [key]: val })), true)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* مستحضرات التجميل */}
+          <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
+            <SectionHeader title="مستحضرات التجميل والعناية" icon="💄" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.keys(cosmetics).map((key) => key === "أدوية أخرى" ? (
+                <div key={key} className="md:col-span-2 space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">أدوية أخرى</label>
+                  <input 
+                    type="text" 
+                    placeholder="أدوية أخرى..." 
+                    value={cosmetics["أدوية أخرى"]} 
+                    onChange={(e) => setCosmetics(prev => ({ ...prev, "أدوية أخرى": e.target.value }))} 
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all duration-200 bg-white/50 text-sm"
+                  />
+                </div>
+              ) : (
+                <div key={key} className="bg-gradient-to-br from-purple-50/50 to-pink-50/50 p-3 rounded-xl border border-purple-100/50">
+                  {renderYesNo(key, cosmetics[key], (val) => setCosmetics(prev => ({ ...prev, [key]: val })), true)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* أدوية يومية إضافية */}
+          <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
+            <SectionHeader title="أدوية يومية إضافية" icon="🩺" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.keys(dailyMedicationsExtra).map((key) => key === "أخرى" ? (
+                <div key={key} className="md:col-span-2 space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">أخرى</label>
+                  <input 
+                    type="text" 
+                    placeholder="أدوية أخرى..." 
+                    value={dailyMedicationsExtra["أخرى"]} 
+                    onChange={(e) => setDailyMedicationsExtra(prev => ({ ...prev, "أخرى": e.target.value }))} 
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all duration-200 bg-white/50 text-sm"
+                  />
+                </div>
+              ) : (
+                <div key={key} className="bg-gradient-to-br from-emerald-50/50 to-teal-50/50 p-3 rounded-xl border border-emerald-100/50">
+                  {renderYesNo(key, dailyMedicationsExtra[key], (val) => setDailyMedicationsExtra(prev => ({ ...prev, [key]: val })), true)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* العلاجات السابقة */}
+          <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
+            <SectionHeader title="العلاجات والعمليات السابقة" icon="🏥" />
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">وصف العمليات أو العلاجات السابقة</label>
+              <textarea 
+                placeholder="وصف العمليات أو العلاجات السابقة..." 
+                value={previousTreatments} 
+                onChange={(e) => setPreviousTreatments(e.target.value)} 
+                rows="3"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all duration-200 bg-white/50 text-sm resize-none"
+              />
+            </div>
+          </div>
 
           {/* توقيع المريض والتاريخ */}
           <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
@@ -368,11 +429,6 @@ export default function PatientForm() {
                   onChange={(e) => setDate(e.target.value)} 
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all duration-200 bg-white/50 text-sm"
                 />
-                {date && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    التنسيق: {formatDateToDDMMYYYY(date)}
-                  </p>
-                )}
               </div>
             </div>
           </div>
