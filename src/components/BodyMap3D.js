@@ -1,6 +1,7 @@
 // File (local path): /mnt/data/BodyMap3D.js
 // BodyMap3D - Modern Glass UI (Purple ⇢ Blue) + Health panel shown only when true values exist
 // - Shows sessions grouped by date under the 3D map as a timeline
+// - Shows tasks (client.tasks or client.todos) if available
 // - Tailored animations, gradients, glassmorphism
 // - Uses Firebase RTDB (ref, onValue, push, set)
 
@@ -315,6 +316,7 @@ export default function BodyMap3D({ client, onSaveSession }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [healthOpen, setHealthOpen] = useState(false);
   const [groupedSessions, setGroupedSessions] = useState([]); // grouped by date array
+  const [tasks, setTasks] = useState([]); // optional client tasks/todos
 
   // fetch sessions from firebase for this client (use idNumber or custom client.id)
   useEffect(() => {
@@ -340,6 +342,13 @@ export default function BodyMap3D({ client, onSaveSession }) {
     return () => unsub();
   }, [client?.idNumber]);
 
+  // load tasks if available on client object
+  useEffect(() => {
+    if (!client) { setTasks([]); return; }
+    // Accept client.tasks array or client.todos
+    const t = client.tasks || client.todos || [];
+    setTasks(Array.isArray(t) ? t : []);
+  }, [client]);
 
   const togglePart = useCallback((name) => {
     setSelectedParts((prev) => (prev.includes(name) ? prev.filter((p) => p !== name) : [...prev, name]));
@@ -442,6 +451,14 @@ export default function BodyMap3D({ client, onSaveSession }) {
             </div>
           </div>
         </div>
+
+        <div className="right-card">
+
+          <div className="section-title">الجلسات (Timeline)</div>
+          <div className="timeline-wrap">
+            <SessionsTimeline groupedDates={groupedSessions} />
+          </div>
+        </div>
       </div>
 
       <style jsx>{`
@@ -490,6 +507,11 @@ export default function BodyMap3D({ client, onSaveSession }) {
 
         .empty{ color:${COLORS.muted}; padding:12px; text-align:center; background: rgba(255,255,255,0.01); border-radius:8px; }
 
+        .tasks{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+        .task{ display:flex; gap:8px; align-items:flex-start; padding:8px; border-radius:10px; background: rgba(255,255,255,0.01); }
+        .task-text{ display:flex; flex-direction:column; gap:4px; }
+        .t-title{ font-weight:700; }
+        .t-note{ color:${COLORS.muted}; font-size:13px; }
 
         /* responsive */
         @media (max-width:1000px){
