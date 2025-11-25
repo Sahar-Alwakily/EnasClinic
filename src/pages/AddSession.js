@@ -49,52 +49,7 @@ export default function AddSession() {
         />
       </div>
 
-      {/* سجل الجلسات */}
-      <div className="sessions-section">
-        <div className="sessions-header">
-          <h2 className="sessions-title">📋 سجل الجلسات</h2>
-          <span className="sessions-count">({sessions.length})</span>
-        </div>
-        
-        {sessions.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">📝</div>
-            <p className="empty-text">لا توجد جلسات مسجلة بعد</p>
-            <p className="empty-subtext">سيتم عرض الجلسات هنا بعد إضافتها</p>
-          </div>
-        ) : (
-          <>
-            <div className="sessions-list">
-              {displayedSessions.map((session, index) => (
-                <div key={session.id || index} className="session-card">
-                  <div className="session-main">
-                    <div className="session-area">{session.partName || 'غير محدد'}</div>
-                    <div className="session-date">{session.date}</div>
-                  </div>
-                  <div className="session-details">
-                    <div className="session-therapist">{session.therapist}</div>
-                    <div className="session-amount">{session.amount} شيكل</div>
-                  </div>
-                  {session.notes && (
-                    <div className="session-notes">
-                      <span>ملاحظات: {session.notes}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
 
-            {sessions.length > 5 && (
-              <button
-                onClick={() => setShowAllSessions(!showAllSessions)}
-                className="show-more-button"
-              >
-                {showAllSessions ? 'عرض أقل' : `عرض المزيد (${sessions.length - 5})`}
-              </button>
-            )}
-          </>
-        )}
-      </div>
 
       <style jsx>{`
         .add-session-page {
