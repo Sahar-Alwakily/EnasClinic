@@ -470,8 +470,15 @@ export default function BodyMap3D({ client, onSaveSession }) {
           color: ${COLORS.text};
         }
 
-        .top-row{ display:flex; gap:14px; align-items:center; margin-bottom:12px; }
-        .profile{ display:flex; gap:12px; align-items:center; flex:1; }
+@media (max-width: 1024px) {
+  .top-row {
+    position: relative;
+    z-index: 10; /* أقل من السايدبار */
+    pointer-events: ${open ? "none" : "auto"};
+    opacity: ${open ? 0.3 : 1};
+    transition: opacity 0.3s ease;
+  }
+}        .profile{ display:flex; gap:12px; align-items:center; flex:1; }
         .avatar{
           width:60px; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:center;
           background: ${COLORS.gradient}; color:white; font-weight:700; font-size:20px; box-shadow: 0 10px 30px rgba(124,58,237,0.12);
