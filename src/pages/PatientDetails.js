@@ -213,7 +213,7 @@ export default function PatientDetails() {
         {activeSection === "info" && (
           <div className="space-y-4">
             <GlassCard title="المعلومات الشخصية">
-              <Info label="الاسم >>الكامل" value={patient.fullName} />
+              <Info label="الاسم الكامل" value={patient.fullName} />
               <Info label="رقم الهوية" value={patient.idNumber} />
               <Info label="رقم الهاتف" value={patient.phone} />
               <Info label="تاريخ الميلاد" value={patient.birthDate} />
