@@ -469,7 +469,7 @@ export default function BodyMap3D({ client, onSaveSession }) {
           color: ${COLORS.text};
         }
 
-        .top-row{ display:flex; gap:14px; align-items:center; margin-bottom:12px; }
+        .top-row{ display:flex; gap:14px; align-items:center; margin-bottom:12px;z-index: 20; }
         .profile{ display:flex; gap:12px; align-items:center; flex:1; }
         .avatar{
           width:60px; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:center;
