@@ -465,6 +465,7 @@ export default function BodyMap3D({ client, onSaveSession }) {
         .container{
           direction: rtl;
           padding: 14px;
+          position: relative
           font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
           color: ${COLORS.text};
         }
@@ -490,7 +491,7 @@ export default function BodyMap3D({ client, onSaveSession }) {
         .btn.primary{ background: ${COLORS.gradient}; color:white; box-shadow: 0 8px 26px rgba(37,99,235,0.12); }
         .btn.disabled{ opacity:0.5; cursor:not-allowed; }
 
-        .main-grid{ display:grid; grid-template-columns: 1fr 360px; gap:14px; margin-top:8px; }
+        .main-grid{ display:grid; grid-template-columns: 1fr 360px; gap:14px; margin-top:8px;z-index: 10 }
         .map-card{ border-radius:14px; overflow:hidden; height:420px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.04); box-shadow: 0 10px 40px rgba(124,58,237,0.06); display:flex; flex-direction:column; }
         .map-card :global(canvas){ width:100%; height:100%; display:block; }
         .map-footer{ display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-top:1px solid rgba(255,255,255,0.02); background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent); }
