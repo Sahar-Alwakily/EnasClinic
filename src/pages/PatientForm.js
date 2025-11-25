@@ -6,7 +6,7 @@ import { db } from "../firebaseConfig";
 export default function PatientForm() {
   const navigate = useNavigate();
 
-  // الحالات لكل الحقول
+  // الحالات لكل الحقول - متوافقة مع Firebase
   const [fullName, setFullName] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [phone, setPhone] = useState("");
@@ -26,38 +26,37 @@ export default function PatientForm() {
   const [skinDiseases, setSkinDiseases] = useState(false);
   const [skinDetails, setSkinDetails] = useState("");
   const [chronicConditions, setChronicConditions] = useState({
-    "ضيق نفس": false,
-    "أمراض قلب": false,
-    "تخثر الدم": false,
-    "اضطرابات هرمونية": false,
-    "غدة درقية": false,
-    "أمراض جهاز المناعة": false,
-    "صداع / أوجاع رأس": false,
-    "صرع": false,
-    "فقر دم": false,
-    "ضغط دم": false,
-    "الكلى": false,
-    "الدرقية دم": false,
-    "تكيس مبايض": false,
-    "سكري": false,
-    "سرطان": false,
+    "shortBreath": false,
+    "heartDisease": false,
+    "bloodClot": false,
+    "hormoneDisorder": false,
+    "thyroid": false,
+    "immuneDisease": false,
+    "headache": false,
+    "epilepsy": false,
+    "anemia": false,
+    "bloodPressure": false,
+    "kidney": false,
+    "diabetes": false,
+    "pcod": false,
+    "cancer": false,
   });
   const [cosmetics, setCosmetics] = useState({
-    "صابون": false,
-    "كريم ترطيب": false,
-    "واقي شمس": false,
-    "تقشير": false,
-    "سيروم": false,
-    "أدوية أخرى": "",
+    "soap": false,
+    "moisturizer": false,
+    "sunscreen": false,
+    "exfoliation": false,
+    "serum": false,
+    "otherMedications": "",
   });
   const [dailyMedicationsExtra, setDailyMedicationsExtra] = useState({
-    "منع حمل (حبوب أو غيرها)": false,
-    "حبوب اكتئاب": false,
-    "حبوب تهدئة": false,
-    "حبوب نوم": false,
-    "انتبيّوتيكا (العشر أيام الأخيرة)": false,
-    "روكوتان (آخر ثلاثة أشهر)": false,
-    "أخرى": "",
+    "contraceptive": false,
+    "antidepressant": false,
+    "sedative": false,
+    "sleepingPill": false,
+    "biotica": false,
+    "roaccutane": false,
+    "other": "",
   });
   const [previousTreatments, setPreviousTreatments] = useState("");
   const [patientSignature, setPatientSignature] = useState("");
@@ -114,6 +113,8 @@ export default function PatientForm() {
     }
 
     const patientId = idNumber || `patient-${Date.now()}`;
+    
+    // البيانات متوافقة مع هيكل Firebase
     const formData = {
       fullName,
       idNumber,
@@ -162,6 +163,43 @@ export default function PatientForm() {
       </h3>
     </div>
   );
+
+  // خرائط للعرض بالعربية مع الحفاظ على المفاتيح الإنجليزية
+  const chronicConditionsMap = {
+    "shortBreath": "ضيق نفس",
+    "heartDisease": "أمراض قلب", 
+    "bloodClot": "تخثر الدم",
+    "hormoneDisorder": "اضطرابات هرمونية",
+    "thyroid": "غدة درقية",
+    "immuneDisease": "أمراض جهاز المناعة",
+    "headache": "صداع / أوجاع رأس",
+    "epilepsy": "صرع",
+    "anemia": "فقر دم",
+    "bloodPressure": "ضغط دم",
+    "kidney": "الكلى",
+    "diabetes": "سكري",
+    "pcod": "تكيس مبايض",
+    "cancer": "سرطان"
+  };
+
+  const cosmeticsMap = {
+    "soap": "صابون",
+    "moisturizer": "كريم ترطيب", 
+    "sunscreen": "واقي شمس",
+    "exfoliation": "تقشير",
+    "serum": "سيروم",
+    "otherMedications": "أدوية أخرى"
+  };
+
+  const dailyMedicationsExtraMap = {
+    "contraceptive": "منع حمل (حبوب أو غيرها)",
+    "antidepressant": "حبوب اكتئاب",
+    "sedative": "حبوب تهدئة", 
+    "sleepingPill": "حبوب نوم",
+    "biotica": "انتبيّوتيكا (العشر أيام الأخيرة)",
+    "roaccutane": "روكوتان (آخر ثلاثة أشهر)",
+    "other": "أخرى"
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-6 px-4">
@@ -340,7 +378,7 @@ export default function PatientForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {Object.keys(chronicConditions).map((key) => (
                 <div key={key} className="bg-gradient-to-br from-slate-50 to-blue-50/50 p-3 rounded-xl border border-blue-100/50">
-                  {renderYesNo(key, chronicConditions[key], (val) => setChronicConditions(prev => ({ ...prev, [key]: val })), true)}
+                  {renderYesNo(chronicConditionsMap[key], chronicConditions[key], (val) => setChronicConditions(prev => ({ ...prev, [key]: val })), true)}
                 </div>
               ))}
             </div>
@@ -350,20 +388,20 @@ export default function PatientForm() {
           <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
             <SectionHeader title="مستحضرات التجميل والعناية" icon="💄" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.keys(cosmetics).map((key) => key === "أدوية أخرى" ? (
+              {Object.keys(cosmetics).map((key) => key === "otherMedications" ? (
                 <div key={key} className="md:col-span-2 space-y-1">
                   <label className="block text-xs font-medium text-gray-700 mb-1">أدوية أخرى</label>
                   <input 
                     type="text" 
                     placeholder="أدوية أخرى..." 
-                    value={cosmetics["أدوية أخرى"]} 
-                    onChange={(e) => setCosmetics(prev => ({ ...prev, "أدوية أخرى": e.target.value }))} 
+                    value={cosmetics["otherMedications"]} 
+                    onChange={(e) => setCosmetics(prev => ({ ...prev, "otherMedications": e.target.value }))} 
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all duration-200 bg-white/50 text-sm"
                   />
                 </div>
               ) : (
                 <div key={key} className="bg-gradient-to-br from-purple-50/50 to-pink-50/50 p-3 rounded-xl border border-purple-100/50">
-                  {renderYesNo(key, cosmetics[key], (val) => setCosmetics(prev => ({ ...prev, [key]: val })), true)}
+                  {renderYesNo(cosmeticsMap[key], cosmetics[key], (val) => setCosmetics(prev => ({ ...prev, [key]: val })), true)}
                 </div>
               ))}
             </div>
@@ -373,20 +411,20 @@ export default function PatientForm() {
           <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
             <SectionHeader title="أدوية يومية إضافية" icon="🩺" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.keys(dailyMedicationsExtra).map((key) => key === "أخرى" ? (
+              {Object.keys(dailyMedicationsExtra).map((key) => key === "other" ? (
                 <div key={key} className="md:col-span-2 space-y-1">
                   <label className="block text-xs font-medium text-gray-700 mb-1">أخرى</label>
                   <input 
                     type="text" 
                     placeholder="أدوية أخرى..." 
-                    value={dailyMedicationsExtra["أخرى"]} 
-                    onChange={(e) => setDailyMedicationsExtra(prev => ({ ...prev, "أخرى": e.target.value }))} 
+                    value={dailyMedicationsExtra["other"]} 
+                    onChange={(e) => setDailyMedicationsExtra(prev => ({ ...prev, "other": e.target.value }))} 
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all duration-200 bg-white/50 text-sm"
                   />
                 </div>
               ) : (
                 <div key={key} className="bg-gradient-to-br from-emerald-50/50 to-teal-50/50 p-3 rounded-xl border border-emerald-100/50">
-                  {renderYesNo(key, dailyMedicationsExtra[key], (val) => setDailyMedicationsExtra(prev => ({ ...prev, [key]: val })), true)}
+                  {renderYesNo(dailyMedicationsExtraMap[key], dailyMedicationsExtra[key], (val) => setDailyMedicationsExtra(prev => ({ ...prev, [key]: val })), true)}
                 </div>
               ))}
             </div>
