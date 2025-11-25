@@ -15,6 +15,7 @@ export default function AddSession() {
 
   const [sessions, setSessions] = useState([]);
   const [showAllSessions, setShowAllSessions] = useState(false);
+   const [sidebarOpen, setSidebarOpen] = useState(false);   // 👈 أضف هذا السطر
 
   const handleSaveSession = (sessionData) => {
     setSessions(prev => [...prev, sessionData]);
