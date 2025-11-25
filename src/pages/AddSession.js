@@ -46,6 +46,8 @@ export default function AddSession() {
         <BodyMap3D
           client={patient}
           onSaveSession={handleSaveSession}
+          open={sidebarOpen} // 👈 تأكد من تمريرها
+
         />
       </div>
 

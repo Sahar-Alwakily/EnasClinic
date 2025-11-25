@@ -831,6 +831,11 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
             order: 1;
           }
         }
+          @media (max-width: 1024px) {
+  .top-row.sidebar-open {
+    display: none !important;
+  }
+}
         @media (max-width: 480px) {
           .avatar {
             width: 52px;
