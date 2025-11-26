@@ -334,7 +334,7 @@ function SessionModal({
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-section">
-            <label className="section-label">المناطق المحددة:</label>
+            <label className="section-label">المن!!اطق المحددة:</label>
             <div className="selected-parts-list">
               {selectedParts.map((part, index) => (
                 <div key={index} className="part-item">
