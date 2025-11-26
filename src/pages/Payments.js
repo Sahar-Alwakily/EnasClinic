@@ -145,6 +145,58 @@ export default function Payments() {
     return icons[type] || '💰';
   };
 
+  // دالة لجلب إحصائيات الدفع من الجلسات
+  const getSessionsPaymentsStats = () => {
+    const sessionsPayments = [];
+    let totalSessionsRevenue = 0;
+    let totalSessionsPaid = 0;
+    let totalSessionsRemaining = 0;
+
+    // جلب جميع الجلسات من Firebase
+    const sessionsRef = ref(db, 'sessions');
+    onValue(sessionsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const sessionsData = snapshot.val();
+        
+        Object.keys(sessionsData).forEach(patientId => {
+          const patientSessions = sessionsData[patientId];
+          Object.keys(patientSessions).forEach(sessionId => {
+            const session = patientSessions[sessionId];
+            if (session.amount && session.amount !== "") {
+              const amount = parseInt(session.amount) || 0;
+              totalSessionsRevenue += amount;
+              
+              // نفترض أن المبلغ مدفوع بالكامل إذا لم يكن هناك remainingAmount
+              const paid = amount - (parseInt(session.remainingAmount) || 0);
+              totalSessionsPaid += paid;
+              totalSessionsRemaining += (parseInt(session.remainingAmount) || 0);
+              
+              sessionsPayments.push({
+                id: sessionId,
+                patientId: patientId,
+                patientName: session.clientName,
+                amount: amount,
+                paidAmount: paid,
+                remainingAmount: (parseInt(session.remainingAmount) || 0),
+                paymentDate: session.timestamp || session.date,
+                paymentType: session.paymentType || 'نقدي',
+                description: `جلسة ${session.partName || ''}`,
+                status: (parseInt(session.remainingAmount) || 0) > 0 ? 'جزئي' : 'كامل'
+              });
+            }
+          });
+        });
+      }
+    });
+
+    return {
+      sessionsPayments,
+      totalSessionsRevenue,
+      totalSessionsPaid,
+      totalSessionsRemaining
+    };
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -156,38 +208,76 @@ export default function Payments() {
     );
   }
 
+  // احصائيات الجلسات
+  const sessionsStats = getSessionsPaymentsStats();
+  const allPayments = [...transactions, ...sessionsStats.sessionsPayments];
+  const totalAllRevenue = getTotalRevenue() + sessionsStats.totalSessionsRevenue;
+  const totalAllPaid = getTotalPaid() + sessionsStats.totalSessionsPaid;
+  const totalAllRemaining = getTotalRemaining() + sessionsStats.totalSessionsRemaining;
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
         {/* الهيدر */}
         <div className="text-center mb-6">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">إدارة الدفعات</h1>
-          <p className="text-gray-600 text-sm md:text-base">إدارة جميع الدفعات والمدفوعات</p>
+          <p className="text-gray-600 text-sm md:text-base">إدارة جميع الدفعات والمدفوعات من الجلسات والدفعات المباشرة</p>
         </div>
 
         {/* إحصائيات سريعة */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6">
           <div className="bg-white rounded-lg shadow p-4 text-center">
-            <div className="text-lg md:text-2xl font-bold text-blue-600">{transactions.length}</div>
+            <div className="text-lg md:text-2xl font-bold text-blue-600">{allPayments.length}</div>
             <div className="text-xs md:text-sm text-gray-600 mt-1">إجمالي المعاملات</div>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">
             <div className="text-lg md:text-2xl font-bold text-green-600">
-              {getTotalPaid()} ₪
+              {totalAllPaid} ₪
             </div>
             <div className="text-xs md:text-sm text-gray-600 mt-1">إجمالي المدفوعات</div>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">
             <div className="text-lg md:text-2xl font-bold text-orange-600">
-              {getTotalRemaining()} ₪
+              {totalAllRemaining} ₪
             </div>
             <div className="text-xs md:text-sm text-gray-600 mt-1">المبالغ المتبقية</div>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">
             <div className="text-lg md:text-2xl font-bold text-purple-600">
-              {getTotalRevenue()} ₪
+              {totalAllRevenue} ₪
             </div>
             <div className="text-xs md:text-sm text-gray-600 mt-1">إجمالي الإيرادات</div>
+          </div>
+        </div>
+
+        {/* إحصائيات تفصيلية */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">دفعات مباشرة</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">عدد المعاملات:</span>
+                <span className="font-medium">{transactions.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">المبلغ الإجمالي:</span>
+                <span className="font-medium text-green-600">{getTotalRevenue()} ₪</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">مدفوعات الجلسات</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">عدد الجلسات:</span>
+                <span className="font-medium">{sessionsStats.sessionsPayments.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">المبلغ الإجمالي:</span>
+                <span className="font-medium text-green-600">{sessionsStats.totalSessionsRevenue} ₪</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -202,7 +292,7 @@ export default function Payments() {
           </button>
         </div>
 
-        {/* جدول الدفعات */}
+        {/* جدول جميع الدفعات */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 md:p-6 border-b bg-gray-50">
             <h2 className="text-xl font-semibold text-gray-800">جميع الدفعات المسجلة</h2>
@@ -223,7 +313,7 @@ export default function Payments() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {transactions.map(transaction => (
+                {allPayments.map(transaction => (
                   <tr key={transaction.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-900">
                       <div className="flex items-center gap-2">
@@ -247,6 +337,11 @@ export default function Payments() {
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-green-600">
                       {transaction.paidAmount || transaction.amount} ₪
+                      {transaction.remainingAmount > 0 && (
+                        <div className="text-xs text-orange-600">
+                          (متبقي: {transaction.remainingAmount} ₪)
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {transaction.packageType || 'بدون باكج'}
@@ -271,7 +366,7 @@ export default function Payments() {
 
             {/* بطاقات للجوال */}
             <div className="md:hidden space-y-4 p-4">
-              {transactions.map(transaction => (
+              {allPayments.map(transaction => (
                 <div key={transaction.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <div className="space-y-3">
                     <div className="flex justify-between items-start">
@@ -296,7 +391,14 @@ export default function Payments() {
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <div className="text-gray-600">💵 المبلغ</div>
-                        <div className="font-medium text-green-600">{transaction.paidAmount || transaction.amount} ₪</div>
+                        <div className="font-medium text-green-600">
+                          {transaction.paidAmount || transaction.amount} ₪
+                          {transaction.remainingAmount > 0 && (
+                            <div className="text-xs text-orange-600">
+                              متبقي: {transaction.remainingAmount} ₪
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <div className="text-gray-600">{getPaymentTypeIcon(transaction.paymentType)} نوع الدفع</div>
@@ -314,7 +416,7 @@ export default function Payments() {
               ))}
             </div>
 
-            {transactions.length === 0 && (
+            {allPayments.length === 0 && (
               <div className="p-8 text-center text-gray-500">
                 <div className="text-4xl mb-2">💵</div>
                 <p className="text-sm md:text-base">لا توجد دفعات مسجلة بعد</p>
