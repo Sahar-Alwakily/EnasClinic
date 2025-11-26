@@ -443,15 +443,32 @@ function SessionModal({
   const [paymentType, setPaymentType] = useState("نقدي");
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("جزئي");
+const areaNameMap = {
+  'Abdomen': 'abdomen',
+  'BikiniArea': 'bikiniArea', 
+  'Thighs': 'thighs',
+  'Back': 'back',
+  'Elbow': 'elbow',
+  'Arm': 'arm',
+  'Armpit': 'armpit',
+  'Neck': 'neck',
+  'Face': 'face',
+  'Hand': 'hand',
+  'Feet': 'feet',
+  'Shin': 'shin',
+  'Fullbody': 'fullbody'
+};
 
-  // حساب السعر الإجمالي
-  const totalPrice = useMemo(() => {
-    if (!prices || selectedParts.length === 0) return 0;
-    return selectedParts.reduce((total, part) => {
-      const price = parseInt(prices[part] || "0");
-      return total + price;
-    }, 0);
-  }, [selectedParts, prices]);
+// ثم غير حساب السعر ليصبح:
+const totalPrice = useMemo(() => {
+  if (!prices || selectedParts.length === 0) return 0;
+  return selectedParts.reduce((total, part) => {
+    const priceKey = areaNameMap[part] || part.toLowerCase();
+    const price = parseInt(prices[priceKey] || "0");
+    return total + price;
+  }, 0);
+}, [selectedParts, prices]);
+
 
   // حساب المبلغ المتبقي
   const remainingAmount = useMemo(() => {
@@ -507,7 +524,35 @@ function SessionModal({
               <span className="total-price">{totalPrice} ₪</span>
             </div>
           </div>
-
+{/* قسم التخفيضات */}
+<div className="form-section">
+  <label className="section-label">التخفيضات</label>
+  <div className="discounts-list">
+    {applicableDiscounts.map(discount => (
+      <div key={discount.area} className="discount-item">
+        <label className="discount-label">
+          <input
+            type="checkbox"
+            checked={selectedDiscounts.includes(discount.area)}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setSelectedDiscounts(prev => [...prev, discount.area]);
+              } else {
+                setSelectedDiscounts(prev => prev.filter(d => d !== discount.area));
+              }
+            }}
+          />
+          <span className="discount-text">
+            {discount.areaName} - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+          </span>
+        </label>
+      </div>
+    ))}
+    {applicableDiscounts.length === 0 && (
+      <div className="no-discounts">لا توجد تخفيضات متاحة</div>
+    )}
+  </div>
+</div>
           {/* معلومات الدفع */}
           <div className="form-section">
             <label className="section-label">معلومات الدفع</label>
