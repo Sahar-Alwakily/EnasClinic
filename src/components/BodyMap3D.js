@@ -1,4 +1,4 @@
-// BodyMap3D.js (مع إخفاء top-row أثناء فتح السايدبار)
+// BodyMap3D.js (مع تحسينات واجهة حفظ الجلسات ونظام الأسعار)
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
@@ -16,6 +16,8 @@ const COLORS = {
   text: "#0f172a",
   muted: "#6b7280",
   success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
 };
 
 /* ----------------- WomanModel (3D) ----------------- */
@@ -428,6 +430,399 @@ function SessionsTimeline({ groupedDates = [] }) {
   );
 }
 
+/* ----------------- SessionModal ----------------- */
+function SessionModal({ 
+  isOpen, 
+  onClose, 
+  selectedParts, 
+  onSave, 
+  prices,
+  isProcessing 
+}) {
+  const [notes, setNotes] = useState("");
+  const [paymentType, setPaymentType] = useState("نقدي");
+  const [paidAmount, setPaidAmount] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("جزئي");
+
+  // حساب السعر الإجمالي
+  const totalPrice = useMemo(() => {
+    if (!prices || selectedParts.length === 0) return 0;
+    return selectedParts.reduce((total, part) => {
+      const price = parseInt(prices[part] || "0");
+      return total + price;
+    }, 0);
+  }, [selectedParts, prices]);
+
+  // حساب المبلغ المتبقي
+  const remainingAmount = useMemo(() => {
+    const paid = parseInt(paidAmount || "0");
+    return Math.max(0, totalPrice - paid);
+  }, [totalPrice, paidAmount]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    const sessionData = {
+      notes,
+      paymentType,
+      amount: totalPrice.toString(),
+      paidAmount: paidAmount || "0",
+      remainingAmount: remainingAmount.toString(),
+      paymentStatus: paidAmount >= totalPrice ? "كامل" : paymentStatus,
+      parts: selectedParts,
+      date: new Date().toLocaleDateString('ar-SA')
+    };
+
+    onSave(sessionData);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h3>حفظ الجلسات</h3>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          {/* ملخص المناطق المحددة */}
+          <div className="form-section">
+            <label className="section-label">المناطق المحددة:</label>
+            <div className="selected-parts-list">
+              {selectedParts.map((part, index) => (
+                <div key={index} className="part-item">
+                  <span className="part-name">{part}</span>
+                  <span className="part-price">{prices?.[part] || "0"} ₪</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ملخص السعر */}
+          <div className="price-summary">
+            <div className="price-row">
+              <span>المجموع:</span>
+              <span className="total-price">{totalPrice} ₪</span>
+            </div>
+          </div>
+
+          {/* معلومات الدفع */}
+          <div className="form-section">
+            <label className="section-label">معلومات الدفع</label>
+            
+            <div className="input-group">
+              <label>نوع الدفع:</label>
+              <select 
+                value={paymentType} 
+                onChange={(e) => setPaymentType(e.target.value)}
+                className="form-input"
+              >
+                <option value="نقدي">نقدي</option>
+                <option value="بطاقة">بطاقة</option>
+                <option value="تحويل">تحويل بنكي</option>
+              </select>
+            </div>
+
+            <div className="input-group">
+              <label>المبلغ المدفوع:</label>
+              <input
+                type="number"
+                value={paidAmount}
+                onChange={(e) => setPaidAmount(e.target.value)}
+                placeholder="0"
+                className="form-input"
+                min="0"
+                max={totalPrice}
+              />
+            </div>
+
+            {paidAmount > 0 && (
+              <div className="payment-status">
+                <div className="status-row">
+                  <span>المبلغ المتبقي:</span>
+                  <span className={`amount ${remainingAmount > 0 ? 'remaining' : 'paid'}`}>
+                    {remainingAmount} ₪
+                  </span>
+                </div>
+                <div className="status-row">
+                  <span>حالة الدفع:</span>
+                  <span className={`status ${remainingAmount === 0 ? 'success' : 'warning'}`}>
+                    {remainingAmount === 0 ? 'مدفوع بالكامل' : 'مدفوع جزئياً'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* الملاحظات */}
+          <div className="form-section">
+            <label className="section-label">ملاحظات إضافية:</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="أضف ملاحظات حول الجلسة..."
+              rows="3"
+              className="form-textarea"
+            />
+          </div>
+
+          {/* أزرار الإجراءات */}
+          <div className="modal-actions">
+            <button 
+              type="button" 
+              className="btn secondary"
+              onClick={onClose}
+            >
+              إلغاء
+            </button>
+            <button 
+              type="submit" 
+              className="btn primary"
+              disabled={isProcessing || selectedParts.length === 0}
+            >
+              {isProcessing ? "جاري الحفظ..." : `حفظ الجلسات (${selectedParts.length})`}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <style jsx>{`
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 20px;
+        }
+
+        .modal-content {
+          background: white;
+          border-radius: 16px;
+          padding: 0;
+          width: 100%;
+          max-width: 500px;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px 24px;
+          border-bottom: 1px solid #e5e7eb;
+          background: ${COLORS.gradient};
+          color: white;
+          border-radius: 16px 16px 0 0;
+        }
+
+        .modal-header h3 {
+          margin: 0;
+          font-size: 18px;
+          font-weight: 700;
+        }
+
+        .close-btn {
+          background: none;
+          border: none;
+          color: white;
+          font-size: 18px;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+        }
+
+        .close-btn:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-form {
+          padding: 24px;
+        }
+
+        .form-section {
+          margin-bottom: 24px;
+        }
+
+        .section-label {
+          display: block;
+          font-weight: 600;
+          margin-bottom: 12px;
+          color: ${COLORS.text};
+          font-size: 14px;
+        }
+
+        .selected-parts-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .part-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px;
+          background: #f8fafc;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .part-name {
+          font-weight: 600;
+          color: ${COLORS.text};
+        }
+
+        .part-price {
+          color: ${COLORS.primary};
+          font-weight: 700;
+        }
+
+        .price-summary {
+          background: #f0f9ff;
+          border: 1px solid #bae6fd;
+          border-radius: 8px;
+          padding: 16px;
+          margin-bottom: 24px;
+        }
+
+        .price-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        .total-price {
+          color: ${COLORS.primary};
+          font-size: 18px;
+        }
+
+        .input-group {
+          margin-bottom: 16px;
+        }
+
+        .input-group label {
+          display: block;
+          margin-bottom: 6px;
+          font-weight: 500;
+          color: ${COLORS.text};
+        }
+
+        .form-input, .form-textarea {
+          width: 100%;
+          padding: 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 14px;
+          transition: border-color 0.2s;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+          outline: none;
+          border-color: ${COLORS.primary};
+          box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        .form-textarea {
+          resize: vertical;
+          min-height: 80px;
+        }
+
+        .payment-status {
+          background: #f8fafc;
+          border-radius: 8px;
+          padding: 16px;
+          margin-top: 16px;
+        }
+
+        .status-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+
+        .status-row:last-child {
+          margin-bottom: 0;
+        }
+
+        .amount.remaining {
+          color: ${COLORS.warning};
+          font-weight: 600;
+        }
+
+        .amount.paid {
+          color: ${COLORS.success};
+          font-weight: 600;
+        }
+
+        .status.success {
+          color: ${COLORS.success};
+          font-weight: 600;
+        }
+
+        .status.warning {
+          color: ${COLORS.warning};
+          font-weight: 600;
+        }
+
+        .modal-actions {
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+          margin-top: 24px;
+        }
+
+        .btn {
+          padding: 12px 24px;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 14px;
+        }
+
+        .btn.primary {
+          background: ${COLORS.gradient};
+          color: white;
+        }
+
+        .btn.primary:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
+        }
+
+        .btn.primary:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .btn.secondary {
+          background: #f3f4f6;
+          color: ${COLORS.text};
+          border: 1px solid #d1d5db;
+        }
+
+        .btn.secondary:hover {
+          background: #e5e7eb;
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /* ----------------- MAIN COMPONENT BodyMap3D ----------------- */
 export default function BodyMap3D({ client, onSaveSession, open = false }) {
   const [selectedParts, setSelectedParts] = useState([]);
@@ -436,6 +831,17 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   const [healthOpen, setHealthOpen] = useState(false);
   const [groupedSessions, setGroupedSessions] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [prices, setPrices] = useState({});
+  const [showSessionModal, setShowSessionModal] = useState(false);
+
+  // جلب الأسعار من Firebase
+  useEffect(() => {
+    const pricesRef = ref(db, 'prices');
+    const unsub = onValue(pricesRef, (snap) => {
+      setPrices(snap.val() || {});
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (!client?.idNumber) return;
@@ -496,6 +902,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         count++;
       }
       setSelectedParts([]);
+      setShowSessionModal(false);
       return { success: true, message: `تمت إضافة ${count} جلسة` };
     } catch (err) {
       console.error(err);
@@ -547,16 +954,10 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
             </button>
             <button
               className={`btn primary ${selectedParts.length === 0 ? "disabled" : ""}`}
-              disabled={selectedParts.length === 0 || isProcessing}
-              onClick={() => {
-                const notes = prompt("ملاحظة للجلسة (اختياري):") || "";
-                const amount = prompt("المبلغ (₪)") || "";
-                addSession({ notes, amount, paymentType: amount ? "نقدي" : "" });
-              }}
+              disabled={selectedParts.length === 0}
+              onClick={() => setShowSessionModal(true)}
             >
-              {isProcessing
-                ? "جاري..."
-                : `حفظ جلسات (${selectedParts.length})`}
+              حفظ جلسات ({selectedParts.length})
             </button>
           </div>
         </div>
@@ -608,6 +1009,16 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         </div>
       </div>
 
+      {/* Session Modal */}
+      <SessionModal
+        isOpen={showSessionModal}
+        onClose={() => setShowSessionModal(false)}
+        selectedParts={selectedParts}
+        onSave={addSession}
+        prices={prices}
+        isProcessing={isProcessing}
+      />
+
       <style jsx>{`
         .container {
           direction: rtl;
@@ -627,12 +1038,10 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
           z-index: 30;
           transition: opacity 0.3s ease;
         }
-        /* عند فتح السايدبار على الموبايل/تابلت نخفي العنصر */
+
         @media (max-width: 1024px) {
           .top-row.sidebar-open {
-            z-index: 10;
-            opacity: 0.3;
-            pointer-events: none;
+            display: none !important;
           }
         }
 
@@ -817,7 +1226,6 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
           font-size: 14px;
         }
 
-        /* responsive */
         @media (max-width: 1000px) {
           .main-grid {
             grid-template-columns: 1fr;
@@ -831,11 +1239,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
             order: 1;
           }
         }
-          @media (max-width: 1024px) {
-  .top-row.sidebar-open {
-    display: none !important;
-  }
-}
+
         @media (max-width: 480px) {
           .avatar {
             width: 52px;

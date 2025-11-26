@@ -158,14 +158,7 @@ export default function PatientDetails() {
             ←
           </button>
 
-          <button
-            onClick={() =>
-              navigate("/add-session", { state: { patientId } })
-            }
-            className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-5 py-2 rounded-xl shadow-lg hover:opacity-90"
-          >
-            + جلسة
-          </button>
+
         </div>
 
         {/* Patient Card */}
