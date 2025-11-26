@@ -33,8 +33,9 @@ export default function PatientDetails() {
         ...session,
       }));
 
-      const groupedSessions = groupSessionsByDate(sessionsArray);
-      setSessions(groupedSessions);
+      // ترتيب الجلسات من الأحدث إلى الأقدم
+      sessionsArray.sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
+      setSessions(sessionsArray);
     });
 
     return () => {
@@ -42,50 +43,6 @@ export default function PatientDetails() {
       unsubscribeSessions();
     };
   }, [patientId, navigate]);
-
-  const groupSessionsByDate = (sessionsArray) => {
-    const grouped = {};
-
-    sessionsArray.forEach((session) => {
-      const sessionDate =
-        session.date ||
-        new Date(session.timestamp).toLocaleDateString("ar-SA");
-
-      if (!grouped[sessionDate]) {
-        grouped[sessionDate] = {
-          date: sessionDate,
-          areas: [],
-          therapist: session.therapist,
-          amount: session.amount,
-          paymentType: session.paymentType,
-          notes: session.notes,
-          sessions: [],
-        };
-      }
-
-      const areas = getSessionAreas(session);
-      grouped[sessionDate].areas = [
-        ...new Set([...grouped[sessionDate].areas, ...areas]),
-      ];
-      grouped[sessionDate].sessions.push(session);
-    });
-
-    return Object.values(grouped).sort(
-      (a, b) => new Date(b.date) - new Date(a.date)
-    );
-  };
-
-  const renderYesNo = (value) => (
-    <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-        value
-          ? "bg-green-100 text-green-700 border border-green-300"
-          : "bg-gray-200 text-gray-600 border border-gray-300"
-      }`}
-    >
-      {value ? "نعم" : "لا"}
-    </span>
-  );
 
   const getAreaNameInArabic = (area) => {
     const areaNames = {
@@ -107,33 +64,26 @@ export default function PatientDetails() {
   };
 
   const getSessionAreas = (session) => {
+    if (session.parts && Array.isArray(session.parts)) {
+      return session.parts;
+    }
     if (session.partName) {
       return [session.partName];
     }
-
-    const areaKeys = Object.keys(session).filter(
-      (key) =>
-        ![
-          "id",
-          "clientId",
-          "clientName",
-          "date",
-          "timestamp",
-          "amount",
-          "notes",
-          "paymentType",
-          "therapist",
-          "partName",
-        ].includes(key)
-    );
-
-    if (areaKeys.length > 0) {
-      const areaString = areaKeys.map((key) => session[key]).join("");
-      return [areaString];
-    }
-
     return ["غير محدد"];
   };
+
+  const renderYesNo = (value) => (
+    <span
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+        value
+          ? "bg-green-100 text-green-700 border border-green-300"
+          : "bg-gray-200 text-gray-600 border border-gray-300"
+      }`}
+    >
+      {value ? "نعم" : "لا"}
+    </span>
+  );
 
   if (!patient) {
     return (
@@ -157,8 +107,6 @@ export default function PatientDetails() {
           >
             ←
           </button>
-
-
         </div>
 
         {/* Patient Card */}
@@ -237,39 +185,165 @@ export default function PatientDetails() {
         {/* SESSIONS */}
         {activeSection === "sessions" && (
           <div className="space-y-4">
-            {sessions.map((group, idx) => (
-              <div
-                key={idx}
-                className="bg-white p-4 rounded-2xl shadow-md border border-purple-100"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-purple-700 font-bold">{group.date}</span>
-                  <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs">
-                    {group.areas.length} منطقة
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {group.areas.map((a, i) => (
-                    <span
-                      key={i}
-                      className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs"
-                    >
-                      {getAreaNameInArabic(a)}
-                    </span>
-                  ))}
-                </div>
-
-                {group.notes && (
-                  <p className="text-gray-600 text-sm bg-gray-50 p-2 rounded-lg">
-                    {group.notes}
-                  </p>
-                )}
+            {sessions.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-2">📭</div>
+                <p className="text-gray-500">لا توجد جلسات مسجلة بعد</p>
               </div>
-            ))}
+            ) : (
+              sessions.map((session, idx) => (
+                <SessionCard 
+                  key={session.id || idx} 
+                  session={session} 
+                  getAreaNameInArabic={getAreaNameInArabic}
+                  getSessionAreas={getSessionAreas}
+                />
+              ))
+            )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ---------- SESSION CARD COMPONENT ----------- */
+function SessionCard({ session, getAreaNameInArabic, getSessionAreas }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const areas = getSessionAreas(session);
+  const totalAmount = parseInt(session.amount || session.discountedPrice || 0);
+  const paidAmount = parseInt(session.paidAmount || 0);
+  const remainingAmount = parseInt(session.remainingAmount || totalAmount - paidAmount);
+  const paymentStatus = session.paymentStatus || (remainingAmount === 0 ? "كامل" : "جزئي");
+  
+  // التاريخ
+  const sessionDate = session.date || new Date(session.timestamp).toLocaleDateString("ar-SA");
+  const gregorianDate = session.gregorianDate || new Date(session.timestamp).toISOString().split('T')[0];
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg border border-purple-100 overflow-hidden">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-100">
+        <div className="flex justify-between items-start mb-3">
+          <div>
+            <span className="text-purple-700 font-bold text-lg">{sessionDate}</span>
+            <span className="text-gray-400 text-sm mr-2">({gregorianDate})</span>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            paymentStatus === "كامل" 
+              ? "bg-green-100 text-green-700 border border-green-300"
+              : "bg-orange-100 text-orange-700 border border-orange-300"
+          }`}>
+            {paymentStatus}
+          </span>
+        </div>
+
+        {/* المعالج */}
+        {session.therapist && (
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-blue-600">👨‍⚕️</span>
+            <span className="text-gray-700 font-medium">المعالج: {session.therapist}</span>
+          </div>
+        )}
+
+        {/* المناطق */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {areas.map((area, i) => (
+            <span
+              key={i}
+              className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium"
+            >
+              {getAreaNameInArabic(area)}
+            </span>
+          ))}
+        </div>
+
+        {/* المبالغ المالية */}
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="bg-gray-50 p-2 rounded-lg">
+            <div className="text-gray-500">المبلغ الكلي</div>
+            <div className="font-bold text-gray-800">{totalAmount} ₪</div>
+          </div>
+          <div className="bg-gray-50 p-2 rounded-lg">
+            <div className="text-gray-500">المدفوع</div>
+            <div className="font-bold text-green-600">{paidAmount} ₪</div>
+          </div>
+          <div className="bg-gray-50 p-2 rounded-lg">
+            <div className="text-gray-500">المتبقي</div>
+            <div className={`font-bold ${remainingAmount > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+              {remainingAmount} ₪
+            </div>
+          </div>
+          <div className="bg-gray-50 p-2 rounded-lg">
+            <div className="text-gray-500">طريقة الدفع</div>
+            <div className="font-bold text-blue-600">{session.paymentType || "نقدي"}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* التفاصيل الإضافية */}
+      {(session.notes || session.appliedDiscounts) && (
+        <>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full p-3 text-center text-purple-600 font-medium border-t border-gray-100 hover:bg-purple-50 transition"
+          >
+            {isExpanded ? "إخفاء التفاصيل" : "عرض التفاصيل"} {isExpanded ? "▲" : "▼"}
+          </button>
+
+          {isExpanded && (
+            <div className="p-4 bg-gray-50 border-t border-gray-100">
+              {/* الملاحظات */}
+              {session.notes && (
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-gray-600">📝</span>
+                    <span className="font-medium text-gray-700">ملاحظات:</span>
+                  </div>
+                  <p className="text-gray-600 text-sm bg-white p-3 rounded-lg border">
+                    {session.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* التخفيضات */}
+              {session.appliedDiscounts && session.appliedDiscounts.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-green-600">🎁</span>
+                    <span className="font-medium text-gray-700">التخفيضات المطبقة:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {session.appliedDiscounts.map((discount, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs"
+                      >
+                        {discount}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* السعر الأصلي بعد الخصم */}
+              {session.originalPrice && session.discountedPrice && (
+                <div className="mt-3 p-3 bg-white rounded-lg border text-sm">
+                  <div className="flex justify-between text-gray-600">
+                    <span>السعر الأصلي:</span>
+                    <span>{session.originalPrice} ₪</span>
+                  </div>
+                  <div className="flex justify-between text-green-600 font-bold mt-1">
+                    <span>السعر بعد الخصم:</span>
+                    <span>{session.discountedPrice} ₪</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
