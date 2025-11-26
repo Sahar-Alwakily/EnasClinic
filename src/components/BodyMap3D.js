@@ -339,26 +339,64 @@ function SessionModal({
   }, [selectedParts, prices, getPartPrice]);
 
   // حساب السعر بعد التخفيضات
-  const discountedPrice = useMemo(() => {
-    if (selectedDiscounts.length === 0) return totalPrice;
+const discountedPrice = useMemo(() => {
+  if (selectedDiscounts.length === 0) return totalPrice;
 
-    let finalPrice = totalPrice;
+  let finalPrice = totalPrice;
+  
+  // تفريق بين تخفيضات الجسم كامل وتخفيضات المناطق
+  const fullBodyDiscount = selectedDiscounts.find(d => d === 'fullbody');
+  const areaDiscounts = selectedDiscounts.filter(d => d !== 'fullbody');
+
+  // أولاً: تطبيق تخفيضات المناطق المحددة على أسعارها فقط
+  if (areaDiscounts.length > 0) {
+    let areaTotal = 0;
     
-    selectedDiscounts.forEach(discountKey => {
-      const discount = applicableDiscounts.find(d => d && d.area === discountKey);
-      if (discount) {
-        if (discount.type === 'percentage') {
-          finalPrice = finalPrice * (1 - discount.value / 100);
-        } else {
-          finalPrice = finalPrice - discount.value;
+    selectedParts.forEach(part => {
+      let partPrice = getPartPrice(part);
+      
+      // البحث عن تخفيض لهذه المنطقة بالتحديد
+      const partDiscount = areaDiscounts.find(discountKey => {
+        const discount = applicableDiscounts.find(d => d && d.area === discountKey);
+        return discount && discount.area === (areaNameMap[part] || part.toLowerCase());
+      });
+      
+      if (partDiscount) {
+        const discount = applicableDiscounts.find(d => d && d.area === partDiscount);
+        if (discount) {
+          if (discount.type === 'percentage') {
+            partPrice = partPrice * (1 - discount.value / 100);
+          } else {
+            partPrice = Math.max(0, partPrice - discount.value);
+          }
+          console.log(`🎯 تطبيق تخفيض ${discount.type === 'percentage' ? discount.value + '%' : discount.value + '₪'} على منطقة ${part}: ${partPrice} ₪`);
         }
       }
+      
+      areaTotal += partPrice;
     });
+    
+    finalPrice = areaTotal;
+  }
 
-    const final = Math.max(0, Math.round(finalPrice));
-    console.log(`🎯 Discounted price: ${final} ₪ (from ${totalPrice} ₪)`);
-    return final;
-  }, [totalPrice, selectedDiscounts, applicableDiscounts]);
+  // ثانياً: تطبيق تخفيض الجسم كامل على المجموع النهائي
+  if (fullBodyDiscount) {
+    const discount = applicableDiscounts.find(d => d && d.area === 'fullbody');
+    if (discount) {
+      if (discount.type === 'percentage') {
+        finalPrice = finalPrice * (1 - discount.value / 100);
+      } else {
+        finalPrice = Math.max(0, finalPrice - discount.value);
+      }
+      console.log(`👤 تطبيق تخفيض الجسم كامل ${discount.type === 'percentage' ? discount.value + '%' : discount.value + '₪'}: ${finalPrice} ₪`);
+    }
+  }
+
+  const final = Math.max(0, Math.round(finalPrice));
+  console.log(`💰 السعر النهائي بعد كل التخفيضات: ${final} ₪ (من ${totalPrice} ₪)`);
+  return final;
+}, [totalPrice, selectedDiscounts, applicableDiscounts, selectedParts, getPartPrice]);
+
 
   const remainingAmount = useMemo(() => {
     const paid = parseInt(paidAmount || "0");
@@ -412,34 +450,45 @@ function SessionModal({
           </div>
 
           {/* قسم التخفيضات */}
-          {applicableDiscounts.length > 0 && (
-            <div className="form-section">
-              <label className="section-label">التخفيضات المتاحة</label>
-              <div className="discounts-list">
-                {applicableDiscounts.map(discount => (
-                  <div key={discount.area} className="discount-item">
-                    <label className="discount-label">
-                      <input
-                        type="checkbox"
-                        checked={selectedDiscounts.includes(discount.area)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedDiscounts(prev => [...prev, discount.area]);
-                          } else {
-                            setSelectedDiscounts(prev => prev.filter(d => d !== discount.area));
-                          }
-                        }}
-                      />
-                      <span className="discount-text">
-                        {discount.areaName} - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
-                        {discount.minSessions > 1 && ` (لـ ${discount.minSessions} جلسات فأكثر)`}
-                      </span>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+{/* قسم التخفيضات */}
+{applicableDiscounts.length > 0 && (
+  <div className="form-section">
+    <label className="section-label">التخفيضات المتاحة</label>
+    <div className="discounts-list">
+      {applicableDiscounts.map(discount => (
+        <div key={discount.area} className="discount-item">
+          <label className="discount-label">
+            <input
+              type="checkbox"
+              checked={selectedDiscounts.includes(discount.area)}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedDiscounts(prev => [...prev, discount.area]);
+                } else {
+                  setSelectedDiscounts(prev => prev.filter(d => d !== discount.area));
+                }
+              }}
+            />
+            <span className="discount-text">
+              {discount.area === 'fullbody' ? (
+                <>
+                  <strong>👤 {discount.areaName}</strong> - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+                  <span className="discount-note"> (على المجموع الكلي)</span>
+                </>
+              ) : (
+                <>
+                  {discount.areaName} - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+                  <span className="discount-note"> (على المنطقة فقط)</span>
+                </>
+              )}
+              {discount.minSessions > 1 && ` (لـ ${discount.minSessions} جلسات فأكثر)`}
+            </span>
+          </label>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
           {/* ملخص السعر مع التخفيضات */}
           <div className="price-summary">
@@ -588,50 +637,55 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   }, []);
 
   // حساب التخفيضات المتاحة
-  useEffect(() => {
-    if (!discounts || selectedParts.length === 0) {
-      setApplicableDiscounts([]);
-      return;
-    }
+useEffect(() => {
+  if (!discounts || selectedParts.length === 0) {
+    setApplicableDiscounts([]);
+    return;
+  }
 
-    const today = new Date();
-    const availableDiscounts = [];
+  const today = new Date();
+  const availableDiscounts = [];
 
-    // تحويل discounts إلى مصفوفة
-    const discountsArray = Array.isArray(discounts) ? discounts : Object.values(discounts);
+  // تحويل discounts إلى مصفوفة
+  const discountsArray = Array.isArray(discounts) ? discounts : Object.values(discounts);
+  
+  discountsArray.forEach(discount => {
+    if (!discount) return;
     
-    discountsArray.forEach(discount => {
-      if (!discount) return;
-      
-      // التحقق من أن التخفيض نشط
-      if (discount.isActive === false) return;
-      
-      // التحقق من تاريخ الصلاحية
-      if (discount.validUntil) {
-        try {
-          const validDate = new Date(discount.validUntil);
-          if (validDate < today) return;
-        } catch (error) {
-          console.error('Invalid date format:', discount.validUntil);
-        }
+    // التحقق من أن التخفيض نشط
+    if (discount.isActive === false) return;
+    
+    // التحقق من تاريخ الصلاحية
+    if (discount.validUntil) {
+      try {
+        const validDate = new Date(discount.validUntil);
+        if (validDate < today) return;
+      } catch (error) {
+        console.error('Invalid date format:', discount.validUntil);
       }
-      
-      // التحقق من أن المنطقة مطابقة
-      const discountArea = discount.area;
+    }
+    
+    // تخفيض الجسم كامل - متاح دائماً إذا كان هناك مناطق محددة
+    if (discount.area === 'fullbody') {
+      availableDiscounts.push(discount);
+    } 
+    // تخفيضات المناطق - متاحة فقط إذا كانت المنطقة مطابقة
+    else {
       const hasMatchingArea = selectedParts.some(part => {
         const partKey = areaNameMap[part] || part.toLowerCase();
-        return partKey === discountArea;
+        return partKey === discount.area;
       });
       
       if (hasMatchingArea) {
         availableDiscounts.push(discount);
       }
-    });
+    }
+  });
 
-    console.log('🎯 Available discounts:', availableDiscounts);
-    setApplicableDiscounts(availableDiscounts);
-    setSelectedDiscounts([]);
-  }, [selectedParts, discounts]);
+  console.log('🎯 التخفيضات المتاحة:', availableDiscounts);
+  setApplicableDiscounts(availableDiscounts);
+  setSelectedDiscounts([]);
+}, [selectedParts, discounts]);
 
   useEffect(() => {
     if (!client?.idNumber) return;
