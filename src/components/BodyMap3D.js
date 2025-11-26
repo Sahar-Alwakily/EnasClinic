@@ -4,7 +4,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { ref, set, push, onValue } from "firebase/database";
 import { db } from "../firebaseConfig";
-import "./BodyMap3D.css"; // استيراد ملف CSS
+import "./BodyMap3D.css";
 
 /* ---------- DESIGN COLORS ---------- */
 const COLORS = {
@@ -19,6 +19,23 @@ const COLORS = {
   success: "#10B981",
   warning: "#F59E0B",
   error: "#EF4444",
+};
+
+// خريطة أسماء المناطق
+const areaNameMap = {
+  'Abdomen': 'abdomen',
+  'BikiniArea': 'bikiniArea', 
+  'Thighs': 'thighs',
+  'Back': 'back',
+  'Elbow': 'elbow',
+  'Arm': 'arm',
+  'Armpit': 'armpit',
+  'Neck': 'neck',
+  'Face': 'face',
+  'Hand': 'hand',
+  'Feet': 'feet',
+  'Shin': 'shin',
+  'Fullbody': 'fullbody'
 };
 
 /* ----------------- WomanModel (3D) ----------------- */
@@ -241,28 +258,15 @@ function SessionModal({
   selectedParts, 
   onSave, 
   prices,
-  isProcessing 
+  isProcessing,
+  applicableDiscounts = [],
+  selectedDiscounts = [],
+  setSelectedDiscounts
 }) {
   const [notes, setNotes] = useState("");
   const [paymentType, setPaymentType] = useState("نقدي");
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("جزئي");
-  
-  const areaNameMap = {
-    'Abdomen': 'abdomen',
-    'BikiniArea': 'bikiniArea', 
-    'Thighs': 'thighs',
-    'Back': 'back',
-    'Elbow': 'elbow',
-    'Arm': 'arm',
-    'Armpit': 'armpit',
-    'Neck': 'neck',
-    'Face': 'face',
-    'Hand': 'hand',
-    'Feet': 'feet',
-    'Shin': 'shin',
-    'Fullbody': 'fullbody'
-  };
 
   const totalPrice = useMemo(() => {
     if (!prices || selectedParts.length === 0) return 0;
@@ -273,10 +277,30 @@ function SessionModal({
     }, 0);
   }, [selectedParts, prices]);
 
+  // حساب السعر بعد التخفيضات
+  const discountedPrice = useMemo(() => {
+    if (selectedDiscounts.length === 0) return totalPrice;
+
+    let finalPrice = totalPrice;
+    
+    selectedDiscounts.forEach(discountKey => {
+      const discount = applicableDiscounts.find(d => d.area === discountKey);
+      if (discount) {
+        if (discount.type === 'percentage') {
+          finalPrice = finalPrice * (1 - discount.value / 100);
+        } else {
+          finalPrice = finalPrice - discount.value;
+        }
+      }
+    });
+
+    return Math.max(0, Math.round(finalPrice));
+  }, [totalPrice, selectedDiscounts, applicableDiscounts]);
+
   const remainingAmount = useMemo(() => {
     const paid = parseInt(paidAmount || "0");
-    return Math.max(0, totalPrice - paid);
-  }, [totalPrice, paidAmount]);
+    return Math.max(0, discountedPrice - paid);
+  }, [discountedPrice, paidAmount]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -284,12 +308,15 @@ function SessionModal({
     const sessionData = {
       notes,
       paymentType,
-      amount: totalPrice.toString(),
+      amount: discountedPrice.toString(),
       paidAmount: paidAmount || "0",
       remainingAmount: remainingAmount.toString(),
-      paymentStatus: paidAmount >= totalPrice ? "كامل" : paymentStatus,
+      paymentStatus: paidAmount >= discountedPrice ? "كامل" : paymentStatus,
       parts: selectedParts,
-      date: new Date().toLocaleDateString('ar-SA')
+      date: new Date().toLocaleDateString('ar-SA'),
+      appliedDiscounts: selectedDiscounts,
+      originalPrice: totalPrice.toString(),
+      discountedPrice: discountedPrice.toString()
     };
 
     onSave(sessionData);
@@ -318,11 +345,55 @@ function SessionModal({
             </div>
           </div>
 
+          {/* قسم التخفيضات */}
+          {applicableDiscounts.length > 0 && (
+            <div className="form-section">
+              <label className="section-label">التخفيضات المتاحة</label>
+              <div className="discounts-list">
+                {applicableDiscounts.map(discount => (
+                  <div key={discount.area} className="discount-item">
+                    <label className="discount-label">
+                      <input
+                        type="checkbox"
+                        checked={selectedDiscounts.includes(discount.area)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedDiscounts(prev => [...prev, discount.area]);
+                          } else {
+                            setSelectedDiscounts(prev => prev.filter(d => d !== discount.area));
+                          }
+                        }}
+                      />
+                      <span className="discount-text">
+                        {discount.areaName} - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+                        {discount.minSessions > 1 && ` (لـ ${discount.minSessions} جلسات فأكثر)`}
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ملخص السعر مع التخفيضات */}
           <div className="price-summary">
             <div className="price-row">
               <span>المجموع:</span>
               <span className="total-price">{totalPrice} ₪</span>
             </div>
+            
+            {selectedDiscounts.length > 0 && (
+              <>
+                <div className="price-row discount">
+                  <span>التخفيضات:</span>
+                  <span className="discount-amount">-{totalPrice - discountedPrice} ₪</span>
+                </div>
+                <div className="price-row final">
+                  <span>السعر النهائي:</span>
+                  <span className="final-price">{discountedPrice} ₪</span>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="form-section">
@@ -350,7 +421,7 @@ function SessionModal({
                 placeholder="0"
                 className="form-input"
                 min="0"
-                max={totalPrice}
+                max={discountedPrice}
               />
             </div>
 
@@ -415,7 +486,11 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   const [tasks, setTasks] = useState([]);
   const [prices, setPrices] = useState({});
   const [showSessionModal, setShowSessionModal] = useState(false);
+  const [applicableDiscounts, setApplicableDiscounts] = useState([]);
+  const [selectedDiscounts, setSelectedDiscounts] = useState([]);
+  const [discounts, setDiscounts] = useState({});
 
+  // جلب الأسعار من Firebase
   useEffect(() => {
     const pricesRef = ref(db, 'prices');
     const unsub = onValue(pricesRef, (snap) => {
@@ -423,6 +498,46 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
     });
     return () => unsub();
   }, []);
+
+  // جلب التخفيضات من Firebase
+  useEffect(() => {
+    const discountsRef = ref(db, 'discounts');
+    const unsub = onValue(discountsRef, (snapshot) => {
+      setDiscounts(snapshot.val() || {});
+    });
+    return () => unsub();
+  }, []);
+
+  // حساب التخفيضات المتاحة
+  useEffect(() => {
+    if (!discounts || selectedParts.length === 0) {
+      setApplicableDiscounts([]);
+      return;
+    }
+
+    const today = new Date();
+    const availableDiscounts = [];
+
+    Object.values(discounts).forEach(discount => {
+      // التحقق من أن التخفيض نشط ولم ينتهي
+      if (!discount.isActive) return;
+      if (discount.validUntil && new Date(discount.validUntil) < today) return;
+      
+      // التحقق من أن المنطقة مطابقة
+      const discountArea = discount.area;
+      const hasMatchingArea = selectedParts.some(part => {
+        const partKey = areaNameMap[part] || part.toLowerCase();
+        return partKey === discountArea;
+      });
+      
+      if (hasMatchingArea) {
+        availableDiscounts.push(discount);
+      }
+    });
+
+    setApplicableDiscounts(availableDiscounts);
+    setSelectedDiscounts([]);
+  }, [selectedParts, discounts]);
 
   useEffect(() => {
     if (!client?.idNumber) return;
@@ -484,6 +599,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       }
       setSelectedParts([]);
       setShowSessionModal(false);
+      setSelectedDiscounts([]);
       return { success: true, message: `تمت إضافة ${count} جلسة` };
     } catch (err) {
       console.error(err);
@@ -594,6 +710,9 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         onSave={addSession}
         prices={prices}
         isProcessing={isProcessing}
+        applicableDiscounts={applicableDiscounts}
+        selectedDiscounts={selectedDiscounts}
+        setSelectedDiscounts={setSelectedDiscounts}
       />
     </div>
   );
