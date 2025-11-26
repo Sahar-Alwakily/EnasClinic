@@ -285,7 +285,7 @@ function SessionModal({
   const [paymentType, setPaymentType] = useState("نقدي");
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("جزئي");
-
+ const [therapist, setTherapist] = useState(""); 
   // دالة محسنة للحصول على السعر الصحيح
   const getPartPrice = useCallback((part) => {
     if (!prices || Object.keys(prices).length === 0) {
@@ -415,6 +415,8 @@ const discountedPrice = useMemo(() => {
       paymentStatus: paidAmount >= discountedPrice ? "كامل" : paymentStatus,
       parts: selectedParts,
       date: new Date().toLocaleDateString('ar-SA'),
+      gregorianDate: new Date().toISOString().split('T')[0], // تاريخ ميلادي
+      therapist: therapist.trim(), // اسم المعالج
       appliedDiscounts: selectedDiscounts,
       originalPrice: totalPrice.toString(),
       discountedPrice: discountedPrice.toString()
@@ -451,7 +453,7 @@ const discountedPrice = useMemo(() => {
 
           {/* قسم التخفيضات */}
 {/* قسم التخفيضات */}
-{applicableDiscounts.length > 0 && (
+      {applicableDiscounts.length > 0 && (
   <div className="form-section">
     <label className="section-label">التخفيضات المتاحة</label>
     <div className="discounts-list">
@@ -557,7 +559,33 @@ const discountedPrice = useMemo(() => {
               </div>
             )}
           </div>
+<div className="form-section">
+            <label className="section-label">معلومات إضافية</label>
+            
+            <div className="input-group">
+              <label>اسم المعالج:</label>
+              <input
+                type="text"
+                value={therapist}
+                onChange={(e) => setTherapist(e.target.value)}
+                placeholder="أدخل اسم المعالج..."
+                className="form-input"
+                required
+              />
+            </div>
 
+            <div className="input-group">
+              <label>التاريخ الميلادي:</label>
+              <input
+                type="date"
+                value={new Date().toISOString().split('T')[0]}
+                className="form-input"
+                readOnly
+              />
+              <small className="date-note">يتم الحفظ تلقائياً بالتاريخ الميلادي</small>
+            </div>
+          </div>
+          
           <div className="form-section">
             <label className="section-label">ملاحظات إضافية:</label>
             <textarea
@@ -730,29 +758,27 @@ const addSession = async (sessionData) => {
     return { success: false, message: "client id missing" };
   setIsProcessing(true);
   try {
-    // إنشاء جلسة واحدة تشمل جميع المناطق
     const refSessions = ref(db, `sessions/${client.idNumber}`);
     const newRef = push(refSessions);
     
-    // توليد ID فريد للجلسة
     const sessionId = newRef.key;
     
     const toSave = {
       ...sessionData,
-      // حفظ جميع المناطق في جلسة واحدة
-      parts: selectedParts, // جميع المناطق المحددة
-      partName: selectedParts.join(' + '), // أسماء المناطق مجتمعة
+      parts: selectedParts,
+      partName: selectedParts.join(' + '),
       clientId: client.idNumber,
       clientName: client.fullName,
       timestamp: new Date().toISOString(),
-      sessionId: sessionId, // إضافة ID الجلسة
-      // إضافة حقول الدفع الأساسية
+      sessionId: sessionId,
       paidAmount: sessionData.paidAmount || "0",
       remainingAmount: sessionData.remainingAmount || sessionData.amount,
       paymentStatus: sessionData.paymentStatus || "غير مدفوع",
-      // معلومات إضافية
-      areasCount: selectedParts.length, // عدد المناطق
-      areas: selectedParts // قائمة المناطق
+      areasCount: selectedParts.length,
+      areas: selectedParts,
+      // التأكد من حفظ اسم المعالج والتاريخ الميلادي
+      therapist: sessionData.therapist || "غير محدد",
+      gregorianDate: sessionData.gregorianDate || new Date().toISOString().split('T')[0]
     };
     
     await set(newRef, toSave);
