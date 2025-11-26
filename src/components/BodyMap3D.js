@@ -1,4 +1,4 @@
-// BodyMap3D.js
+// BodyMap3D.js - الإصدار المصحح بالكامل
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
@@ -21,7 +21,7 @@ const COLORS = {
   error: "#EF4444",
 };
 
-// خريطة أسماء المناطق
+// خريطة أسماء المناطق - مصححة
 const areaNameMap = {
   'Abdomen': 'abdomen',
   'BikiniArea': 'bikiniArea', 
@@ -35,7 +35,8 @@ const areaNameMap = {
   'Hand': 'hand',
   'Feet': 'feet',
   'Shin': 'shin',
-  'Fullbody': 'fullbody'
+  'Fullbody': 'fullbody',
+  'body': 'fullbody'
 };
 
 /* ----------------- WomanModel (3D) ----------------- */
@@ -277,14 +278,14 @@ function SessionModal({
     }, 0);
   }, [selectedParts, prices]);
 
-  // حساب السعر بعد التخفيضات
+  // حساب السعر بعد التخفيضات - مصحح
   const discountedPrice = useMemo(() => {
     if (selectedDiscounts.length === 0) return totalPrice;
 
     let finalPrice = totalPrice;
     
     selectedDiscounts.forEach(discountKey => {
-      const discount = applicableDiscounts.find(d => d.area === discountKey);
+      const discount = applicableDiscounts.find(d => d && d.area === discountKey);
       if (discount) {
         if (discount.type === 'percentage') {
           finalPrice = finalPrice * (1 - discount.value / 100);
@@ -334,7 +335,7 @@ function SessionModal({
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-section">
-            <label className="section-label">المن!!اطق المحددة:</label>
+            <label className="section-label">المناطق المحددة:</label>
             <div className="selected-parts-list">
               {selectedParts.map((part, index) => (
                 <div key={index} className="part-item">
@@ -499,16 +500,23 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
     return () => unsub();
   }, []);
 
-  // جلب التخفيضات من Firebase
+  // جلب التخفيضات من Firebase - مصحح
   useEffect(() => {
     const discountsRef = ref(db, 'discounts');
     const unsub = onValue(discountsRef, (snapshot) => {
-      setDiscounts(snapshot.val() || {});
+      if (snapshot.exists()) {
+        const discountsData = snapshot.val();
+        console.log('Discounts loaded:', discountsData);
+        setDiscounts(discountsData);
+      } else {
+        console.log('No discounts found');
+        setDiscounts({});
+      }
     });
     return () => unsub();
   }, []);
 
-  // حساب التخفيضات المتاحة
+  // حساب التخفيضات المتاحة - مصحح
   useEffect(() => {
     if (!discounts || selectedParts.length === 0) {
       setApplicableDiscounts([]);
@@ -518,10 +526,24 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
     const today = new Date();
     const availableDiscounts = [];
 
-    Object.values(discounts).forEach(discount => {
-      // التحقق من أن التخفيض نشط ولم ينتهي
-      if (!discount.isActive) return;
-      if (discount.validUntil && new Date(discount.validUntil) < today) return;
+    // تحويل discounts إلى مصفوفة
+    const discountsArray = Array.isArray(discounts) ? discounts : Object.values(discounts);
+    
+    discountsArray.forEach(discount => {
+      if (!discount) return;
+      
+      // التحقق من أن التخفيض نشط
+      if (discount.isActive === false) return;
+      
+      // التحقق من تاريخ الصلاحية
+      if (discount.validUntil) {
+        try {
+          const validDate = new Date(discount.validUntil);
+          if (validDate < today) return;
+        } catch (error) {
+          console.error('Invalid date format:', discount.validUntil);
+        }
+      }
       
       // التحقق من أن المنطقة مطابقة
       const discountArea = discount.area;
@@ -535,6 +557,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       }
     });
 
+    console.log('Available discounts:', availableDiscounts);
     setApplicableDiscounts(availableDiscounts);
     setSelectedDiscounts([]);
   }, [selectedParts, discounts]);
