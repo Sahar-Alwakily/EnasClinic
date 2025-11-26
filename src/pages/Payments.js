@@ -6,6 +6,9 @@ export default function Payments() {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [showInvoices, setShowInvoices] = useState(false);
+  const [patientInvoices, setPatientInvoices] = useState([]);
   const [newPayment, setNewPayment] = useState({
     patientId: '',
     amount: '',
@@ -14,7 +17,7 @@ export default function Payments() {
     date: new Date().toISOString().split('T')[0]
   });
 
-  // جلب المرضى وجلساتهم
+  // جلب المرضى وجلساتهم مع تفاصيل كل جلسة
   useEffect(() => {
     const patientsRef = ref(db, 'patients');
     const sessionsRef = ref(db, 'sessions');
@@ -32,19 +35,23 @@ export default function Payments() {
           if (sessionsSnapshot.exists()) {
             const sessionsData = sessionsSnapshot.val();
             
-            // حساب المدفوعات والمديونيات لكل مريض - مصحح
+            // حساب المدفوعات والمديونيات لكل مريض - مصحح حسب الجلسات
             const patientsWithPayments = patientsList.map(patient => {
               const patientSessions = sessionsData[patient.idNumber] || {};
-              const sessionsArray = Object.values(patientSessions);
+              const sessionsArray = Object.entries(patientSessions).map(([id, session]) => ({
+                id,
+                ...session
+              }));
               
+              // حساب لكل جلسة على حدة
               let totalSessionsAmount = 0;
               let totalPaid = 0;
               let totalRemaining = 0;
               
               sessionsArray.forEach(session => {
                 const sessionAmount = parseInt(session.amount) || 0;
-                const sessionRemaining = parseInt(session.remainingAmount) || sessionAmount;
-                const sessionPaid = sessionAmount - sessionRemaining;
+                const sessionPaid = parseInt(session.paidAmount) || 0;
+                const sessionRemaining = sessionAmount - sessionPaid;
                 
                 totalSessionsAmount += sessionAmount;
                 totalPaid += sessionPaid;
@@ -56,7 +63,8 @@ export default function Payments() {
                 totalSessionsAmount,
                 totalPaid,
                 totalRemaining,
-                sessionsCount: sessionsArray.length
+                sessionsCount: sessionsArray.length,
+                sessions: sessionsArray // حفظ الجلسات كاملة
               };
             });
             
@@ -67,7 +75,8 @@ export default function Payments() {
               totalSessionsAmount: 0,
               totalPaid: 0,
               totalRemaining: 0,
-              sessionsCount: 0
+              sessionsCount: 0,
+              sessions: []
             })));
           }
           setLoading(false);
@@ -82,6 +91,13 @@ export default function Payments() {
 
     return () => unsubscribePatients();
   }, []);
+
+  // عرض فواتير المريض
+  const viewPatientInvoices = (patient) => {
+    setSelectedPatient(patient);
+    setPatientInvoices(patient.sessions || []);
+    setShowInvoices(true);
+  };
 
   // إضافة دفعة جديدة لمريض - مصحح
   const addNewPayment = async () => {
@@ -172,15 +188,6 @@ export default function Payments() {
     }
   };
 
-  const getPaymentTypeIcon = (type) => {
-    const icons = {
-      'نقدي': '💵',
-      'بطاقة': '💳',
-      'تحويل': '🏦'
-    };
-    return icons[type] || '💰';
-  };
-
   // إحصائيات عامة
   const getTotalStats = () => {
     return patients.reduce((stats, patient) => {
@@ -269,6 +276,7 @@ export default function Payments() {
                   <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">المدفوع</th>
                   <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">المتبقي</th>
                   <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">الحالة</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -309,6 +317,14 @@ export default function Payments() {
                          patient.totalPaid > 0 ? 'مدفوع جزئياً' : 
                          'غير مدفوع'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => viewPatientInvoices(patient)}
+                        className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-700 transition"
+                      >
+                        عرض الفواتير
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -363,6 +379,15 @@ export default function Payments() {
                         <div className="text-gray-600">📋 المتبقي</div>
                         <div className="font-medium text-orange-600">{patient.totalRemaining} ₪</div>
                       </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        onClick={() => viewPatientInvoices(patient)}
+                        className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 transition"
+                      >
+                        عرض الفواتير
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -458,6 +483,106 @@ export default function Payments() {
                   className="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition"
                 >
                   إضافة الدفعة
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* مودال عرض الفواتير */}
+        {showInvoices && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b bg-gray-50 sticky top-0">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    فواتير المريض: {selectedPatient?.fullName}
+                  </h3>
+                  <button
+                    onClick={() => setShowInvoices(false)}
+                    className="text-gray-500 hover:text-gray-700 text-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p className="text-gray-600 text-sm mt-1">
+                  #{selectedPatient?.idNumber} • إجمالي المتبقي: {selectedPatient?.totalRemaining} ₪
+                </p>
+              </div>
+
+              <div className="p-6">
+                <div className="space-y-4">
+                  {patientInvoices.map((invoice, index) => {
+                    const amount = parseInt(invoice.amount) || 0;
+                    const paid = parseInt(invoice.paidAmount) || 0;
+                    const remaining = amount - paid;
+                    
+                    return (
+                      <div key={invoice.id || index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <div className="text-sm text-gray-600">📅 التاريخ</div>
+                            <div className="font-medium">{invoice.date || 'بدون تاريخ'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-600">🏷️ المنطقة</div>
+                            <div className="font-medium">{invoice.partName || 'غير محدد'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-600">💰 المبلغ الكلي</div>
+                            <div className="font-medium text-purple-600">{amount} ₪</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-600">💵 المدفوع</div>
+                            <div className="font-medium text-green-600">{paid} ₪</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-600">📋 المتبقي</div>
+                            <div className={`font-medium ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                              {remaining} ₪
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-600">🔄 حالة الدفع</div>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              remaining === 0 
+                                ? 'bg-green-100 text-green-800' 
+                                : paid > 0
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {remaining === 0 ? 'مدفوع بالكامل' : 
+                               paid > 0 ? 'مدفوع جزئياً' : 
+                               'غير مدفوع'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {invoice.notes && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="text-sm text-gray-600">📝 الملاحظات</div>
+                            <div className="text-sm">{invoice.notes}</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {patientInvoices.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="text-4xl mb-2">📭</div>
+                    <p>لا توجد فواتير لهذا المريض</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t">
+                <button
+                  onClick={() => setShowInvoices(false)}
+                  className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 transition"
+                >
+                  إغلاق
                 </button>
               </div>
             </div>
