@@ -21,7 +21,7 @@ const COLORS = {
   error: "#EF4444",
 };
 
-// خريطة أسماء المناطق - مصححة
+// خريطة أسماء المناطق - مصححة وموسعة
 const areaNameMap = {
   'Abdomen': 'abdomen',
   'BikiniArea': 'bikiniArea', 
@@ -37,6 +37,23 @@ const areaNameMap = {
   'Shin': 'shin',
   'Fullbody': 'fullbody',
   'body': 'fullbody'
+};
+
+// خريطة الأسعار العكسية للبحث
+const reverseAreaMap = {
+  'abdomen': 'Abdomen',
+  'bikiniarea': 'BikiniArea',
+  'thighs': 'Thighs',
+  'back': 'Back',
+  'elbow': 'Elbow',
+  'arm': 'Arm',
+  'armpit': 'Armpit',
+  'neck': 'Neck',
+  'face': 'Face',
+  'hand': 'Hand',
+  'feet': 'Feet',
+  'shin': 'Shin',
+  'fullbody': 'Fullbody'
 };
 
 /* ----------------- WomanModel (3D) ----------------- */
@@ -269,16 +286,59 @@ function SessionModal({
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("جزئي");
 
+  // دالة محسنة للحصول على السعر الصحيح
+  const getPartPrice = useCallback((part) => {
+    if (!prices || Object.keys(prices).length === 0) {
+      console.log('No prices available');
+      return 0;
+    }
+
+    // جميع المفاتيح المحتملة للبحث
+    const possibleKeys = [
+      part, // الاسم الأصلي
+      areaNameMap[part], // الاسم المعرب
+      part.toLowerCase(), // بالأحرف الصغيرة
+      areaNameMap[part]?.toLowerCase(), // المعرب بالأحرف الصغيرة
+      reverseAreaMap[part?.toLowerCase()], // البحث العكسي
+      // محاولة مطابقة جزئية
+      ...Object.keys(prices).filter(key => 
+        key.toLowerCase().includes(part.toLowerCase()) || 
+        part.toLowerCase().includes(key.toLowerCase())
+      )
+    ].filter(Boolean); // إزالة القيم الفارغة
+
+    console.log(`🔍 Searching price for: "${part}"`);
+    console.log('🔑 Possible keys:', possibleKeys);
+    console.log('💰 Available prices:', prices);
+
+    for (const key of possibleKeys) {
+      if (prices[key] !== undefined && prices[key] !== null && prices[key] !== "") {
+        const priceValue = parseInt(prices[key]);
+        if (!isNaN(priceValue) && priceValue > 0) {
+          console.log(`✅ Found price for "${part}": ${priceValue} ₪ (key: ${key})`);
+          return priceValue;
+        }
+      }
+    }
+
+    console.log(`❌ No valid price found for: "${part}"`);
+    return 0;
+  }, [prices]);
+
   const totalPrice = useMemo(() => {
     if (!prices || selectedParts.length === 0) return 0;
-    return selectedParts.reduce((total, part) => {
-      const priceKey = areaNameMap[part] || part.toLowerCase();
-      const price = parseInt(prices[priceKey] || "0");
+    
+    const calculatedTotal = selectedParts.reduce((total, part) => {
+      const price = getPartPrice(part);
+      console.log(`🧮 ${part}: ${price} ₪`);
       return total + price;
     }, 0);
-  }, [selectedParts, prices]);
 
-  // حساب السعر بعد التخفيضات - مصحح
+    console.log(`🏷️ Total calculated: ${calculatedTotal} ₪`);
+    return calculatedTotal;
+  }, [selectedParts, prices, getPartPrice]);
+
+  // حساب السعر بعد التخفيضات
   const discountedPrice = useMemo(() => {
     if (selectedDiscounts.length === 0) return totalPrice;
 
@@ -295,7 +355,9 @@ function SessionModal({
       }
     });
 
-    return Math.max(0, Math.round(finalPrice));
+    const final = Math.max(0, Math.round(finalPrice));
+    console.log(`🎯 Discounted price: ${final} ₪ (from ${totalPrice} ₪)`);
+    return final;
   }, [totalPrice, selectedDiscounts, applicableDiscounts]);
 
   const remainingAmount = useMemo(() => {
@@ -337,12 +399,15 @@ function SessionModal({
           <div className="form-section">
             <label className="section-label">المناطق المحددة:</label>
             <div className="selected-parts-list">
-              {selectedParts.map((part, index) => (
-                <div key={index} className="part-item">
-                  <span className="part-name">{part}</span>
-                  <span className="part-price">{prices?.[part] || "0"} ₪</span>
-                </div>
-              ))}
+              {selectedParts.map((part, index) => {
+                const price = getPartPrice(part);
+                return (
+                  <div key={index} className="part-item">
+                    <span className="part-name">{part}</span>
+                    <span className="part-price">{price} ₪</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -491,22 +556,28 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   const [selectedDiscounts, setSelectedDiscounts] = useState([]);
   const [discounts, setDiscounts] = useState({});
 
-  // جلب الأسعار من Firebase
+  // جلب الأسعار من Firebase - محسن
   useEffect(() => {
     const pricesRef = ref(db, 'prices');
+    console.log('🔄 Fetching prices from Firebase...');
     const unsub = onValue(pricesRef, (snap) => {
-      setPrices(snap.val() || {});
+      const pricesData = snap.val() || {};
+      console.log('✅ PRICES LOADED FROM FIREBASE:', pricesData);
+      console.log('📊 Price keys:', Object.keys(pricesData));
+      setPrices(pricesData);
+    }, (error) => {
+      console.error('❌ Error loading prices:', error);
     });
     return () => unsub();
   }, []);
 
-  // جلب التخفيضات من Firebase - مصحح
+  // جلب التخفيضات من Firebase
   useEffect(() => {
     const discountsRef = ref(db, 'discounts');
     const unsub = onValue(discountsRef, (snapshot) => {
       if (snapshot.exists()) {
         const discountsData = snapshot.val();
-        console.log('Discounts loaded:', discountsData);
+        console.log('🎁 Discounts loaded:', discountsData);
         setDiscounts(discountsData);
       } else {
         console.log('No discounts found');
@@ -516,7 +587,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
     return () => unsub();
   }, []);
 
-  // حساب التخفيضات المتاحة - مصحح
+  // حساب التخفيضات المتاحة
   useEffect(() => {
     if (!discounts || selectedParts.length === 0) {
       setApplicableDiscounts([]);
@@ -557,7 +628,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       }
     });
 
-    console.log('Available discounts:', availableDiscounts);
+    console.log('🎯 Available discounts:', availableDiscounts);
     setApplicableDiscounts(availableDiscounts);
     setSelectedDiscounts([]);
   }, [selectedParts, discounts]);
