@@ -18,79 +18,79 @@ export default function Payments() {
   });
 
   // جلب المرضى وجلساتهم مع تفاصيل كل جلسة
-  useEffect(() => {
-    const patientsRef = ref(db, 'patients');
-    const sessionsRef = ref(db, 'sessions');
-    
-    const unsubscribePatients = onValue(patientsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const patientsData = snapshot.val();
-        const patientsList = Object.keys(patientsData).map(key => ({
-          id: key,
-          ...patientsData[key]
-        }));
-        
-        // جلب الجلسات لكل مريض
-        const unsubscribeSessions = onValue(sessionsRef, (sessionsSnapshot) => {
-          if (sessionsSnapshot.exists()) {
-            const sessionsData = sessionsSnapshot.val();
+useEffect(() => {
+  const patientsRef = ref(db, 'patients');
+  const sessionsRef = ref(db, 'sessions');
+  
+  const unsubscribePatients = onValue(patientsRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const patientsData = snapshot.val();
+      const patientsList = Object.keys(patientsData).map(key => ({
+        id: key,
+        ...patientsData[key]
+      }));
+      
+      // جلب الجلسات لكل مريض
+      const unsubscribeSessions = onValue(sessionsRef, (sessionsSnapshot) => {
+        if (sessionsSnapshot.exists()) {
+          const sessionsData = sessionsSnapshot.val();
+          
+          // حساب المدفوعات والمديونيات لكل مريض - مصحح حسب الجلسات
+          const patientsWithPayments = patientsList.map(patient => {
+            const patientSessions = sessionsData[patient.idNumber] || {};
+            const sessionsArray = Object.entries(patientSessions).map(([id, session]) => ({
+              id,
+              ...session
+            }));
             
-            // حساب المدفوعات والمديونيات لكل مريض - مصحح حسب الجلسات
-            const patientsWithPayments = patientsList.map(patient => {
-              const patientSessions = sessionsData[patient.idNumber] || {};
-              const sessionsArray = Object.entries(patientSessions).map(([id, session]) => ({
-                id,
-                ...session
-              }));
+            // حساب لكل جلسة على حدة (جلسة واحدة قد تشمل عدة مناطق)
+            let totalSessionsAmount = 0;
+            let totalPaid = 0;
+            let totalRemaining = 0;
+            
+            sessionsArray.forEach(session => {
+              const sessionAmount = parseInt(session.amount) || 0;
+              const sessionPaid = parseInt(session.paidAmount) || 0;
+              const sessionRemaining = parseInt(session.remainingAmount) || (sessionAmount - sessionPaid);
               
-              // حساب لكل جلسة على حدة
-              let totalSessionsAmount = 0;
-              let totalPaid = 0;
-              let totalRemaining = 0;
-              
-              sessionsArray.forEach(session => {
-                const sessionAmount = parseInt(session.amount) || 0;
-                const sessionPaid = parseInt(session.paidAmount) || 0;
-                const sessionRemaining = sessionAmount - sessionPaid;
-                
-                totalSessionsAmount += sessionAmount;
-                totalPaid += sessionPaid;
-                totalRemaining += sessionRemaining;
-              });
-              
-              return {
-                ...patient,
-                totalSessionsAmount,
-                totalPaid,
-                totalRemaining,
-                sessionsCount: sessionsArray.length,
-                sessions: sessionsArray // حفظ الجلسات كاملة
-              };
+              totalSessionsAmount += sessionAmount;
+              totalPaid += sessionPaid;
+              totalRemaining += sessionRemaining;
             });
             
-            setPatients(patientsWithPayments);
-          } else {
-            setPatients(patientsList.map(patient => ({
+            return {
               ...patient,
-              totalSessionsAmount: 0,
-              totalPaid: 0,
-              totalRemaining: 0,
-              sessionsCount: 0,
-              sessions: []
-            })));
-          }
-          setLoading(false);
-        });
-        
-        return () => unsubscribeSessions();
-      } else {
-        setPatients([]);
+              totalSessionsAmount,
+              totalPaid,
+              totalRemaining,
+              sessionsCount: sessionsArray.length,
+              sessions: sessionsArray // حفظ الجلسات كاملة
+            };
+          });
+          
+          setPatients(patientsWithPayments);
+        } else {
+          setPatients(patientsList.map(patient => ({
+            ...patient,
+            totalSessionsAmount: 0,
+            totalPaid: 0,
+            totalRemaining: 0,
+            sessionsCount: 0,
+            sessions: []
+          })));
+        }
         setLoading(false);
-      }
-    });
+      });
+      
+      return () => unsubscribeSessions();
+    } else {
+      setPatients([]);
+      setLoading(false);
+    }
+  });
 
-    return () => unsubscribePatients();
-  }, []);
+  return () => unsubscribePatients();
+}, []);
 
   // عرض فواتير المريض
   const viewPatientInvoices = (patient) => {

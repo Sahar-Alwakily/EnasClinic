@@ -671,34 +671,43 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
     []
   );
 
-  const addSession = async (sessionData) => {
+const addSession = async (sessionData) => {
   if (!client?.idNumber)
     return { success: false, message: "client id missing" };
   setIsProcessing(true);
   try {
-    let count = 0;
-    for (const part of selectedParts) {
-      const refSessions = ref(db, `sessions/${client.idNumber}`);
-      const newRef = push(refSessions);
-      const toSave = {
-        ...sessionData,
-        partName: part,
-        clientId: client.idNumber,
-        clientName: client.fullName,
-        timestamp: new Date().toISOString(),
-        // إضافة حقول الدفع الأساسية
-        paidAmount: sessionData.paidAmount || "0",
-        remainingAmount: sessionData.remainingAmount || sessionData.amount,
-        paymentStatus: sessionData.paymentStatus || "غير مدفوع"
-      };
-      await set(newRef, toSave);
-      onSaveSession?.(toSave);
-      count++;
-    }
+    // إنشاء جلسة واحدة تشمل جميع المناطق
+    const refSessions = ref(db, `sessions/${client.idNumber}`);
+    const newRef = push(refSessions);
+    
+    // توليد ID فريد للجلسة
+    const sessionId = newRef.key;
+    
+    const toSave = {
+      ...sessionData,
+      // حفظ جميع المناطق في جلسة واحدة
+      parts: selectedParts, // جميع المناطق المحددة
+      partName: selectedParts.join(' + '), // أسماء المناطق مجتمعة
+      clientId: client.idNumber,
+      clientName: client.fullName,
+      timestamp: new Date().toISOString(),
+      sessionId: sessionId, // إضافة ID الجلسة
+      // إضافة حقول الدفع الأساسية
+      paidAmount: sessionData.paidAmount || "0",
+      remainingAmount: sessionData.remainingAmount || sessionData.amount,
+      paymentStatus: sessionData.paymentStatus || "غير مدفوع",
+      // معلومات إضافية
+      areasCount: selectedParts.length, // عدد المناطق
+      areas: selectedParts // قائمة المناطق
+    };
+    
+    await set(newRef, toSave);
+    onSaveSession?.(toSave);
+    
     setSelectedParts([]);
     setShowSessionModal(false);
     setSelectedDiscounts([]);
-    return { success: true, message: `تمت إضافة ${count} جلسة` };
+    return { success: true, message: `تمت إضافة جلسة واحدة تشمل ${selectedParts.length} منطقة` };
   } catch (err) {
     console.error(err);
     return { success: false, message: "خطأ أثناء الحفظ" };
