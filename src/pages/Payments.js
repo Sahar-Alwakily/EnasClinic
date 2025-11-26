@@ -32,7 +32,7 @@ export default function Payments() {
           if (sessionsSnapshot.exists()) {
             const sessionsData = sessionsSnapshot.val();
             
-            // حساب المدفوعات والمديونيات لكل مريض
+            // حساب المدفوعات والمديونيات لكل مريض - مصحح
             const patientsWithPayments = patientsList.map(patient => {
               const patientSessions = sessionsData[patient.idNumber] || {};
               const sessionsArray = Object.values(patientSessions);
@@ -43,11 +43,12 @@ export default function Payments() {
               
               sessionsArray.forEach(session => {
                 const sessionAmount = parseInt(session.amount) || 0;
-                const sessionPaid = sessionAmount - (parseInt(session.remainingAmount) || 0);
+                const sessionRemaining = parseInt(session.remainingAmount) || sessionAmount;
+                const sessionPaid = sessionAmount - sessionRemaining;
                 
                 totalSessionsAmount += sessionAmount;
                 totalPaid += sessionPaid;
-                totalRemaining += (parseInt(session.remainingAmount) || 0);
+                totalRemaining += sessionRemaining;
               });
               
               return {
@@ -82,7 +83,7 @@ export default function Payments() {
     return () => unsubscribePatients();
   }, []);
 
-  // إضافة دفعة جديدة لمريض
+  // إضافة دفعة جديدة لمريض - مصحح
   const addNewPayment = async () => {
     if (!newPayment.patientId || !newPayment.amount) {
       alert('يرجى ملء الحقول الإلزامية');
@@ -93,6 +94,11 @@ export default function Payments() {
       const selectedPatient = patients.find(p => p.idNumber === newPayment.patientId);
       const paymentAmount = parseInt(newPayment.amount);
       
+      if (paymentAmount > selectedPatient.totalRemaining) {
+        alert(`المبلغ المدخل (${paymentAmount} ₪) أكبر من المبلغ المتبقي (${selectedPatient.totalRemaining} ₪)`);
+        return;
+      }
+      
       // حفظ الدفعة في payments
       const paymentRef = push(ref(db, 'payments'));
       const paymentData = {
@@ -102,38 +108,49 @@ export default function Payments() {
         paymentDate: new Date().toISOString(),
         paymentType: newPayment.paymentType,
         description: newPayment.description,
-        status: 'مكتمل'
+        status: 'مكتمل',
+        previousRemaining: selectedPatient.totalRemaining,
+        newRemaining: selectedPatient.totalRemaining - paymentAmount
       };
 
       await set(paymentRef, paymentData);
 
-      // تحديث الجلسات - خصم المبلغ من المتبقي
+      // تحديث الجلسات - خصم المبلغ من المتبقي بشكل صحيح
       const sessionsRef = ref(db, `sessions/${newPayment.patientId}`);
-      const sessionsSnapshot = await onValue(sessionsRef, (snap) => {
+      onValue(sessionsRef, (snap) => {
         if (snap.exists()) {
           const sessionsData = snap.val();
           let remainingToDeduct = paymentAmount;
           
-          Object.keys(sessionsData).forEach(sessionId => {
-            if (remainingToDeduct > 0) {
-              const session = sessionsData[sessionId];
-              const currentRemaining = parseInt(session.remainingAmount) || parseInt(session.amount) || 0;
+          // ترتيب الجلسات من الأقدم إلى الأحدث
+          const sortedSessions = Object.entries(sessionsData)
+            .sort(([,a], [,b]) => new Date(a.timestamp || a.date) - new Date(b.timestamp || b.date));
+          
+          for (const [sessionId, session] of sortedSessions) {
+            if (remainingToDeduct <= 0) break;
+            
+            const currentRemaining = parseInt(session.remainingAmount) || parseInt(session.amount) || 0;
+            
+            if (currentRemaining > 0) {
+              const deductAmount = Math.min(remainingToDeduct, currentRemaining);
+              const newRemaining = currentRemaining - deductAmount;
+              remainingToDeduct -= deductAmount;
               
-              if (currentRemaining > 0) {
-                const deductAmount = Math.min(remainingToDeduct, currentRemaining);
-                const newRemaining = currentRemaining - deductAmount;
-                remainingToDeduct -= deductAmount;
-                
-                // تحديث الجلسة
-                set(ref(db, `sessions/${newPayment.patientId}/${sessionId}/remainingAmount`), newRemaining.toString());
-                
-                // إذا كان المبلغ المتبقي أصبح 0، تحديث حالة الدفع
-                if (newRemaining === 0) {
-                  set(ref(db, `sessions/${newPayment.patientId}/${sessionId}/paymentStatus`), 'كامل');
-                }
-              }
+              console.log(`خصم ${deductAmount} ₪ من جلسة ${sessionId}, المتبقي الجديد: ${newRemaining} ₪`);
+              
+              // تحديث الجلسة
+              set(ref(db, `sessions/${newPayment.patientId}/${sessionId}/remainingAmount`), newRemaining.toString());
+              
+              // تحديث حالة الدفع
+              const paymentStatus = newRemaining === 0 ? 'كامل' : 'جزئي';
+              set(ref(db, `sessions/${newPayment.patientId}/${sessionId}/paymentStatus`), paymentStatus);
+              
+              // تحديث المبلغ المدفوع في الجلسة
+              const currentPaid = parseInt(session.paidAmount) || 0;
+              const newPaidAmount = currentPaid + deductAmount;
+              set(ref(db, `sessions/${newPayment.patientId}/${sessionId}/paidAmount`), newPaidAmount.toString());
             }
-          });
+          }
         }
       }, { onlyOnce: true });
 
@@ -147,7 +164,7 @@ export default function Payments() {
       });
       
       setShowAddModal(false);
-      alert('تم إضافة الدفعة بنجاح!');
+      alert(`تم إضافة الدفعة بنجاح! تم خصم ${paymentAmount} ₪ من المديونية`);
 
     } catch (error) {
       console.error('Error adding payment:', error);
@@ -284,12 +301,12 @@ export default function Payments() {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         patient.totalRemaining === 0 
                           ? 'bg-green-100 text-green-800' 
-                          : patient.totalRemaining < patient.totalSessionsAmount
+                          : patient.totalPaid > 0
                           ? 'bg-orange-100 text-orange-800'
                           : 'bg-red-100 text-red-800'
                       }`}>
                         {patient.totalRemaining === 0 ? 'مدفوع بالكامل' : 
-                         patient.totalRemaining < patient.totalSessionsAmount ? 'مدفوع جزئياً' : 
+                         patient.totalPaid > 0 ? 'مدفوع جزئياً' : 
                          'غير مدفوع'}
                       </span>
                     </td>
@@ -316,12 +333,12 @@ export default function Payments() {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         patient.totalRemaining === 0 
                           ? 'bg-green-100 text-green-800' 
-                          : patient.totalRemaining < patient.totalSessionsAmount
+                          : patient.totalPaid > 0
                           ? 'bg-orange-100 text-orange-800'
                           : 'bg-red-100 text-red-800'
                       }`}>
                         {patient.totalRemaining === 0 ? 'مدفوع بالكامل' : 
-                         patient.totalRemaining < patient.totalSessionsAmount ? 'مدفوع جزئياً' : 
+                         patient.totalPaid > 0 ? 'مدفوع جزئياً' : 
                          'غير مدفوع'}
                       </span>
                     </div>
@@ -395,7 +412,13 @@ export default function Payments() {
                     onChange={(e) => setNewPayment(prev => ({ ...prev, amount: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="0"
+                    max={patients.find(p => p.idNumber === newPayment.patientId)?.totalRemaining || 0}
                   />
+                  {newPayment.patientId && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      أقصى مبلغ يمكن دفعه: {patients.find(p => p.idNumber === newPayment.patientId)?.totalRemaining || 0} ₪
+                    </p>
+                  )}
                 </div>
 
                 <div>
