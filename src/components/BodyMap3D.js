@@ -829,21 +829,28 @@ const addSession = async (sessionData) => {
             </div>
           </div>
 
-          <div className="buttons">
-            <button
-              className="btn ghost"
-              onClick={() => setSelectedParts([])}
-            >
-              إلغاء التحديد
-            </button>
-            <button
-              className={`btn primary ${selectedParts.length === 0 ? "disabled" : ""}`}
-              disabled={selectedParts.length === 0}
-              onClick={() => setShowSessionModal(true)}
-            >
-              حفظ جلسات ({selectedParts.length})
-            </button>
-          </div>
+<div className="buttons">
+  <button
+    className="btn ghost"
+    onClick={() => setSelectedParts([])}
+    style={{ minHeight: '44px' }}
+  >
+    <span className="button-text">إلغاء التحديد</span>
+  </button>
+  <button
+    className={`btn primary ${selectedParts.length === 0 ? "disabled" : ""}`}
+    disabled={selectedParts.length === 0}
+    onClick={() => setShowSessionModal(true)}
+    style={{ 
+      minHeight: '44px',
+      minWidth: '140px'
+    }}
+  >
+    <span className="button-text">
+      حفظ جلسات ({selectedParts.length})
+    </span>
+  </button>
+</div>
         </div>
       </div>
 

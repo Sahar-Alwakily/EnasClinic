@@ -795,3 +795,150 @@
   border-color: #e2e8f0;
   box-shadow: none;
 }
+/* إصلاحات للتصميم المتجاوب */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  
+  .top-row {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  
+  .actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .stats {
+    flex: 1;
+    justify-content: space-around;
+  }
+  
+  .buttons {
+    flex: 1;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    min-height: 44px; /* لللمس السهل */
+  }
+  
+  /* تحسين الزر الرئيسي للأجهزة المحمولة */
+  .btn.primary:not(.disabled) {
+    min-width: 120px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .btn {
+    flex: 1;
+    margin: 0 4px;
+  }
+  
+  .btn.ghost {
+    order: 2;
+  }
+  
+  .btn.primary {
+    order: 1;
+  }
+}
+
+/* إصلاح مشكلة z-index للسايد بار */
+.container {
+  position: relative;
+  z-index: 1;
+}
+
+.top-row {
+  position: relative;
+  z-index: 100;
+}
+
+.main-grid {
+  position: relative;
+  z-index: 1;
+}
+
+/* تحسين المودال للأجهزة المحمولة */
+@media (max-width: 600px) {
+  .modal-overlay {
+    padding: 10px;
+    align-items: flex-end;
+  }
+  
+  .modal-content {
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+  }
+  
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .modal-actions .btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+}
+
+/* تحسين اللمس على الأجهزة المحمولة */
+@media (hover: none) and (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+  
+  .health-header {
+    min-height: 44px;
+    padding: 16px 14px;
+  }
+  
+  .tag, .chip {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+/* إخفاء النص على الشاشات الصغيرة جداً */
+@media (max-width: 360px) {
+  .button-text {
+    font-size: 12px;
+  }
+  
+  .btn.primary .button-text::before {
+    content: "💾 ";
+  }
+}
+
+/* تحسين المظهر على الجوال */
+@media (max-width: 480px) {
+  .btn .button-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+}
