@@ -1,4 +1,4 @@
-// BodyMap3D.js - الإصدار المصحح بالكامل
+// BodyMap3D.js - الإصدار النهائي
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
@@ -117,7 +117,7 @@ function groupSessionsByDateArray(sessionsArray = []) {
   const grouped = {};
   sessionsArray.forEach((s) => {
     // استخدام التاريخ الميلادي للتجميع
-    const dateKey = s.gregorianDateReadable || 
+    const dateKey = s.date || 
                    s.gregorianDate || 
                    (s.timestamp ? new Date(s.timestamp).toLocaleDateString('en-GB') : "No Date");
     if (!grouped[dateKey]) grouped[dateKey] = [];
@@ -240,7 +240,6 @@ function HealthInfoPanel({ client, open, onToggle }) {
 }
 
 /* ----------------- SessionsTimeline ----------------- */
-/* ----------------- SessionsTimeline ----------------- */
 function SessionsTimeline({ groupedDates = [] }) {
   if (!groupedDates || groupedDates.length === 0) {
     return (
@@ -258,9 +257,6 @@ function SessionsTimeline({ groupedDates = [] }) {
           <div className="timeline-left">
             <div className="date-badge">
               {group.date}
-              <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '4px' }}>
-                {new Date(group.date).toLocaleDateString('ar-SA')}
-              </div>
             </div>
             <div className="vline" />
           </div>
@@ -284,8 +280,7 @@ function SessionsTimeline({ groupedDates = [] }) {
                 </div>
                 {s.notes && <div className="notes">📝 {s.notes}</div>}
                 <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
-                  {s.therapist && `👨‍⚕️ ${s.therapist} • `}
-                  {s.gregorianDateReadable || s.gregorianDate}
+                  {s.therapist && `👨‍⚕️ ${s.therapist}`}
                 </div>
               </div>
             ))}
@@ -312,51 +307,52 @@ function SessionModal({
   const [paymentType, setPaymentType] = useState("نقدي");
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("جزئي");
- const [therapist, setTherapist] = useState(""); 
+  const [therapist, setTherapist] = useState(""); 
+
   // دالة محسنة للحصول على السعر الصحيح
-const getPartPrice = useCallback((part) => {
-  if (!prices || Object.keys(prices).length === 0) {
-    console.log('No prices available');
-    return 0;
-  }
+  const getPartPrice = useCallback((part) => {
+    if (!prices || Object.keys(prices).length === 0) {
+      console.log('No prices available');
+      return 0;
+    }
 
-  // تحويل الاسم العربي إلى إنجليزي للبحث في الأسعار
-  const englishPart = reverseAreaMap[part] || part;
-  
-  // جميع المفاتيح المحتملة للبحث
-  const possibleKeys = [
-    englishPart, // الاسم الإنجليزي
-    englishPart.toLowerCase(), // بالإحرف الصغيرة
-    part, // الاسم العربي الأصلي
-    // البحث في الخرائط
-    reverseAreaMap[part], // البحث العكسي
-    englishAreaMap[englishPart?.toLowerCase()], // من الإنجليزية للعربية
-    // محاولة مطابقة جزئية
-    ...Object.keys(prices).filter(key => 
-      key.toLowerCase().includes(englishPart.toLowerCase()) || 
-      englishPart.toLowerCase().includes(key.toLowerCase()) ||
-      key.toLowerCase().includes(part.toLowerCase()) ||
-      part.toLowerCase().includes(key.toLowerCase())
-    )
-  ].filter(Boolean); // إزالة القيم الفارغة
+    // تحويل الاسم العربي إلى إنجليزي للبحث في الأسعار
+    const englishPart = reverseAreaMap[part] || part;
+    
+    // جميع المفاتيح المحتملة للبحث
+    const possibleKeys = [
+      englishPart, // الاسم الإنجليزي
+      englishPart.toLowerCase(), // بالإحرف الصغيرة
+      part, // الاسم العربي الأصلي
+      // البحث في الخرائط
+      reverseAreaMap[part], // البحث العكسي
+      englishAreaMap[englishPart?.toLowerCase()], // من الإنجليزية للعربية
+      // محاولة مطابقة جزئية
+      ...Object.keys(prices).filter(key => 
+        key.toLowerCase().includes(englishPart.toLowerCase()) || 
+        englishPart.toLowerCase().includes(key.toLowerCase()) ||
+        key.toLowerCase().includes(part.toLowerCase()) ||
+        part.toLowerCase().includes(key.toLowerCase())
+      )
+    ].filter(Boolean); // إزالة القيم الفارغة
 
-  console.log(`🔍 Searching price for: "${part}" (English: "${englishPart}")`);
-  console.log('🔑 Possible keys:', possibleKeys);
-  console.log('💰 Available prices:', prices);
+    console.log(`🔍 Searching price for: "${part}" (English: "${englishPart}")`);
+    console.log('🔑 Possible keys:', possibleKeys);
+    console.log('💰 Available prices:', prices);
 
-  for (const key of possibleKeys) {
-    if (prices[key] !== undefined && prices[key] !== null && prices[key] !== "") {
-      const priceValue = parseInt(prices[key]);
-      if (!isNaN(priceValue) && priceValue > 0) {
-        console.log(`✅ Found price for "${part}": ${priceValue} ₪ (key: ${key})`);
-        return priceValue;
+    for (const key of possibleKeys) {
+      if (prices[key] !== undefined && prices[key] !== null && prices[key] !== "") {
+        const priceValue = parseInt(prices[key]);
+        if (!isNaN(priceValue) && priceValue > 0) {
+          console.log(`✅ Found price for "${part}": ${priceValue} ₪ (key: ${key})`);
+          return priceValue;
+        }
       }
     }
-  }
 
-  console.log(`❌ No valid price found for: "${part}"`);
-  return 0;
-}, [prices]);
+    console.log(`❌ No valid price found for: "${part}"`);
+    return 0;
+  }, [prices]);
 
   const totalPrice = useMemo(() => {
     if (!prices || selectedParts.length === 0) return 0;
@@ -372,64 +368,63 @@ const getPartPrice = useCallback((part) => {
   }, [selectedParts, prices, getPartPrice]);
 
   // حساب السعر بعد التخفيضات
-const discountedPrice = useMemo(() => {
-  if (selectedDiscounts.length === 0) return totalPrice;
+  const discountedPrice = useMemo(() => {
+    if (selectedDiscounts.length === 0) return totalPrice;
 
-  let finalPrice = totalPrice;
-  
-  // تفريق بين تخفيضات الجسم كامل وتخفيضات المناطق
-  const fullBodyDiscount = selectedDiscounts.find(d => d === 'fullbody');
-  const areaDiscounts = selectedDiscounts.filter(d => d !== 'fullbody');
-
-  // أولاً: تطبيق تخفيضات المناطق المحددة على أسعارها فقط
-  if (areaDiscounts.length > 0) {
-    let areaTotal = 0;
+    let finalPrice = totalPrice;
     
-    selectedParts.forEach(part => {
-      let partPrice = getPartPrice(part);
+    // تفريق بين تخفيضات الجسم كامل وتخفيضات المناطق
+    const fullBodyDiscount = selectedDiscounts.find(d => d === 'fullbody');
+    const areaDiscounts = selectedDiscounts.filter(d => d !== 'fullbody');
+
+    // أولاً: تطبيق تخفيضات المناطق المحددة على أسعارها فقط
+    if (areaDiscounts.length > 0) {
+      let areaTotal = 0;
       
-      // البحث عن تخفيض لهذه المنطقة بالتحديد
-      const partDiscount = areaDiscounts.find(discountKey => {
-        const discount = applicableDiscounts.find(d => d && d.area === discountKey);
-        return discount && discount.area === (areaNameMap[part] || part.toLowerCase());
+      selectedParts.forEach(part => {
+        let partPrice = getPartPrice(part);
+        
+        // البحث عن تخفيض لهذه المنطقة بالتحديد
+        const partDiscount = areaDiscounts.find(discountKey => {
+          const discount = applicableDiscounts.find(d => d && d.area === discountKey);
+          return discount && discount.area === (areaNameMap[part] || part.toLowerCase());
+        });
+        
+        if (partDiscount) {
+          const discount = applicableDiscounts.find(d => d && d.area === partDiscount);
+          if (discount) {
+            if (discount.type === 'percentage') {
+              partPrice = partPrice * (1 - discount.value / 100);
+            } else {
+              partPrice = Math.max(0, partPrice - discount.value);
+            }
+            console.log(`🎯 تطبيق تخفيض ${discount.type === 'percentage' ? discount.value + '%' : discount.value + '₪'} على منطقة ${part}: ${partPrice} ₪`);
+          }
+        }
+        
+        areaTotal += partPrice;
       });
       
-      if (partDiscount) {
-        const discount = applicableDiscounts.find(d => d && d.area === partDiscount);
-        if (discount) {
-          if (discount.type === 'percentage') {
-            partPrice = partPrice * (1 - discount.value / 100);
-          } else {
-            partPrice = Math.max(0, partPrice - discount.value);
-          }
-          console.log(`🎯 تطبيق تخفيض ${discount.type === 'percentage' ? discount.value + '%' : discount.value + '₪'} على منطقة ${part}: ${partPrice} ₪`);
-        }
-      }
-      
-      areaTotal += partPrice;
-    });
-    
-    finalPrice = areaTotal;
-  }
-
-  // ثانياً: تطبيق تخفيض الجسم كامل على المجموع النهائي
-  if (fullBodyDiscount) {
-    const discount = applicableDiscounts.find(d => d && d.area === 'fullbody');
-    if (discount) {
-      if (discount.type === 'percentage') {
-        finalPrice = finalPrice * (1 - discount.value / 100);
-      } else {
-        finalPrice = Math.max(0, finalPrice - discount.value);
-      }
-      console.log(`👤 تطبيق تخفيض الجسم كامل ${discount.type === 'percentage' ? discount.value + '%' : discount.value + '₪'}: ${finalPrice} ₪`);
+      finalPrice = areaTotal;
     }
-  }
 
-  const final = Math.max(0, Math.round(finalPrice));
-  console.log(`💰 السعر النهائي بعد كل التخفيضات: ${final} ₪ (من ${totalPrice} ₪)`);
-  return final;
-}, [totalPrice, selectedDiscounts, applicableDiscounts, selectedParts, getPartPrice]);
+    // ثانياً: تطبيق تخفيض الجسم كامل على المجموع النهائي
+    if (fullBodyDiscount) {
+      const discount = applicableDiscounts.find(d => d && d.area === 'fullbody');
+      if (discount) {
+        if (discount.type === 'percentage') {
+          finalPrice = finalPrice * (1 - discount.value / 100);
+        } else {
+          finalPrice = Math.max(0, finalPrice - discount.value);
+        }
+        console.log(`👤 تطبيق تخفيض الجسم كامل ${discount.type === 'percentage' ? discount.value + '%' : discount.value + '₪'}: ${finalPrice} ₪`);
+      }
+    }
 
+    const final = Math.max(0, Math.round(finalPrice));
+    console.log(`💰 السعر النهائي بعد كل التخفيضات: ${final} ₪ (من ${totalPrice} ₪)`);
+    return final;
+  }, [totalPrice, selectedDiscounts, applicableDiscounts, selectedParts, getPartPrice]);
 
   const remainingAmount = useMemo(() => {
     const paid = parseInt(paidAmount || "0");
@@ -447,9 +442,9 @@ const discountedPrice = useMemo(() => {
       remainingAmount: remainingAmount.toString(),
       paymentStatus: paidAmount >= discountedPrice ? "كامل" : paymentStatus,
       parts: selectedParts,
-      date: new Date().toLocaleDateString('ar-SA'),
-      gregorianDate: new Date().toISOString().split('T')[0], // تاريخ ميلادي
-      therapist: therapist.trim(), // اسم المعالج
+      date: new Date().toLocaleDateString('en-GB'),
+      gregorianDate: new Date().toISOString().split('T')[0],
+      therapist: therapist.trim(),
       appliedDiscounts: selectedDiscounts,
       originalPrice: totalPrice.toString(),
       discountedPrice: discountedPrice.toString()
@@ -485,45 +480,44 @@ const discountedPrice = useMemo(() => {
           </div>
 
           {/* قسم التخفيضات */}
-{/* قسم التخفيضات */}
-      {applicableDiscounts.length > 0 && (
-  <div className="form-section">
-    <label className="section-label">التخفيضات المتاحة</label>
-    <div className="discounts-list">
-      {applicableDiscounts.map(discount => (
-        <div key={discount.area} className="discount-item">
-          <label className="discount-label">
-            <input
-              type="checkbox"
-              checked={selectedDiscounts.includes(discount.area)}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setSelectedDiscounts(prev => [...prev, discount.area]);
-                } else {
-                  setSelectedDiscounts(prev => prev.filter(d => d !== discount.area));
-                }
-              }}
-            />
-            <span className="discount-text">
-              {discount.area === 'fullbody' ? (
-                <>
-                  <strong>👤 {discount.areaName}</strong> - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
-                  <span className="discount-note"> (على المجموع الكلي)</span>
-                </>
-              ) : (
-                <>
-                  {discount.areaName} - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
-                  <span className="discount-note"> (على المنطقة فقط)</span>
-                </>
-              )}
-              {discount.minSessions > 1 && ` (لـ ${discount.minSessions} جلسات فأكثر)`}
-            </span>
-          </label>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+          {applicableDiscounts.length > 0 && (
+            <div className="form-section">
+              <label className="section-label">التخفيضات المتاحة</label>
+              <div className="discounts-list">
+                {applicableDiscounts.map(discount => (
+                  <div key={discount.area} className="discount-item">
+                    <label className="discount-label">
+                      <input
+                        type="checkbox"
+                        checked={selectedDiscounts.includes(discount.area)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedDiscounts(prev => [...prev, discount.area]);
+                          } else {
+                            setSelectedDiscounts(prev => prev.filter(d => d !== discount.area));
+                          }
+                        }}
+                      />
+                      <span className="discount-text">
+                        {discount.area === 'fullbody' ? (
+                          <>
+                            <strong>👤 {discount.areaName}</strong> - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+                            <span className="discount-note"> (على المجموع الكلي)</span>
+                          </>
+                        ) : (
+                          <>
+                            {discount.areaName} - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+                            <span className="discount-note"> (على المنطقة فقط)</span>
+                          </>
+                        )}
+                        {discount.minSessions > 1 && ` (لـ ${discount.minSessions} جلسات فأكثر)`}
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ملخص السعر مع التخفيضات */}
           <div className="price-summary">
@@ -592,7 +586,8 @@ const discountedPrice = useMemo(() => {
               </div>
             )}
           </div>
-<div className="form-section">
+
+          <div className="form-section">
             <label className="section-label">معلومات إضافية</label>
             
             <div className="input-group">
@@ -698,57 +693,57 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   }, []);
 
   // حساب التخفيضات المتاحة
-useEffect(() => {
-  if (!discounts || selectedParts.length === 0) {
-    setApplicableDiscounts([]);
-    return;
-  }
-
-  const today = new Date();
-  const availableDiscounts = [];
-
-  // تحويل discounts إلى مصفوفة
-  const discountsArray = Array.isArray(discounts) ? discounts : Object.values(discounts);
-  
-  discountsArray.forEach(discount => {
-    if (!discount) return;
-    
-    // التحقق من أن التخفيض نشط
-    if (discount.isActive === false) return;
-    
-    // التحقق من تاريخ الصلاحية
-    if (discount.validUntil) {
-      try {
-        const validDate = new Date(discount.validUntil);
-        if (validDate < today) return;
-      } catch (error) {
-        console.error('Invalid date format:', discount.validUntil);
-      }
+  useEffect(() => {
+    if (!discounts || selectedParts.length === 0) {
+      setApplicableDiscounts([]);
+      return;
     }
+
+    const today = new Date();
+    const availableDiscounts = [];
+
+    // تحويل discounts إلى مصفوفة
+    const discountsArray = Array.isArray(discounts) ? discounts : Object.values(discounts);
     
-    // تخفيض الجسم كامل - متاح دائماً إذا كان هناك مناطق محددة
-    if (discount.area === 'fullbody') {
-      availableDiscounts.push(discount);
-    } 
-    // تخفيضات المناطق - متاحة فقط إذا كانت المنطقة مطابقة
-    else {
-const hasMatchingArea = selectedParts.some(part => {
-  // تحويل الاسم العربي إلى إنجليزي للمقارنة
-  const englishPart = reverseAreaMap[part] || part.toLowerCase();
-  const partKey = englishPart.toLowerCase();
-  return partKey === discount.area;
-});
+    discountsArray.forEach(discount => {
+      if (!discount) return;
       
-      if (hasMatchingArea) {
-        availableDiscounts.push(discount);
+      // التحقق من أن التخفيض نشط
+      if (discount.isActive === false) return;
+      
+      // التحقق من تاريخ الصلاحية
+      if (discount.validUntil) {
+        try {
+          const validDate = new Date(discount.validUntil);
+          if (validDate < today) return;
+        } catch (error) {
+          console.error('Invalid date format:', discount.validUntil);
+        }
       }
-    }
-  });
+      
+      // تخفيض الجسم كامل - متاح دائماً إذا كان هناك مناطق محددة
+      if (discount.area === 'fullbody') {
+        availableDiscounts.push(discount);
+      } 
+      // تخفيضات المناطق - متاحة فقط إذا كانت المنطقة مطابقة
+      else {
+        const hasMatchingArea = selectedParts.some(part => {
+          // تحويل الاسم العربي إلى إنجليزي للمقارنة
+          const englishPart = reverseAreaMap[part] || part.toLowerCase();
+          const partKey = englishPart.toLowerCase();
+          return partKey === discount.area;
+        });
+        
+        if (hasMatchingArea) {
+          availableDiscounts.push(discount);
+        }
+      }
+    });
 
-  console.log('🎯 التخفيضات المتاحة:', availableDiscounts);
-  setApplicableDiscounts(availableDiscounts);
-  setSelectedDiscounts([]);
-}, [selectedParts, discounts]);
+    console.log('🎯 التخفيضات المتاحة:', availableDiscounts);
+    setApplicableDiscounts(availableDiscounts);
+    setSelectedDiscounts([]);
+  }, [selectedParts, discounts]);
 
   useEffect(() => {
     if (!client?.idNumber) return;
@@ -777,70 +772,65 @@ const hasMatchingArea = selectedParts.some(part => {
     setTasks(Array.isArray(t) ? t : []);
   }, [client]);
 
-const togglePart = useCallback(
-  (name) => {
-    // تحويل الاسم الإنجليزي إلى عربي عند التحديد
-    const arabicName = englishAreaMap[name] || name;
-    setSelectedParts((prev) =>
-      prev.includes(arabicName)
-        ? prev.filter((p) => p !== arabicName)
-        : [...prev, arabicName]
-    );
-  },
-  []
-);
+  const togglePart = useCallback(
+    (name) => {
+      // تحويل الاسم الإنجليزي إلى عربي عند التحديد
+      const arabicName = englishAreaMap[name] || name;
+      setSelectedParts((prev) =>
+        prev.includes(arabicName)
+          ? prev.filter((p) => p !== arabicName)
+          : [...prev, arabicName]
+      );
+    },
+    []
+  );
 
-const addSession = async (sessionData) => {
-  if (!client?.idNumber)
-    return { success: false, message: "client id missing" };
-  setIsProcessing(true);
-  try {
-    const refSessions = ref(db, `sessions/${client.idNumber}`);
-    const newRef = push(refSessions);
-    
-    const sessionId = newRef.key;
-    const currentDate = new Date();
-    
-    const toSave = {
-      ...sessionData,
-      parts: selectedParts,
-      partName: selectedParts.join(' + '),
-      clientId: client.idNumber,
-      clientName: client.fullName,
-      timestamp: currentDate.toISOString(),
-      // التاريخ الهجري (للعرض)
-      hijriDate: currentDate.toLocaleDateString('ar-SA'),
-      // التاريخ الميلادي (للحفظ والبحث)
-      gregorianDate: currentDate.toISOString().split('T')[0],
-      // التاريخ الميلادي بصيغة قابلة للقراءة
-      gregorianDateReadable: currentDate.toLocaleDateString('en-GB'),
-      sessionId: sessionId,
-      paidAmount: sessionData.paidAmount || "0",
-      remainingAmount: sessionData.remainingAmount || sessionData.amount,
-      paymentStatus: sessionData.paymentStatus || "غير مدفوع",
-      areasCount: selectedParts.length,
-      areas: selectedParts,
-      therapist: sessionData.therapist || "غير محدد",
-      appliedDiscounts: selectedDiscounts,
-      originalPrice: totalPrice.toString(),
-      discountedPrice: discountedPrice.toString()
-    };
-    
-    await set(newRef, toSave);
-    onSaveSession?.(toSave);
-    
-    setSelectedParts([]);
-    setShowSessionModal(false);
-    setSelectedDiscounts([]);
-    return { success: true, message: `تمت إضافة جلسة واحدة تشمل ${selectedParts.length} منطقة` };
-  } catch (err) {
-    console.error(err);
-    return { success: false, message: "خطأ أثناء الحفظ" };
-  } finally {
-    setIsProcessing(false);
-  }
-};
-
+  const addSession = async (sessionData) => {
+    if (!client?.idNumber)
+      return { success: false, message: "client id missing" };
+    setIsProcessing(true);
+    try {
+      const refSessions = ref(db, `sessions/${client.idNumber}`);
+      const newRef = push(refSessions);
+      
+      const sessionId = newRef.key;
+      const currentDate = new Date();
+      
+      const toSave = {
+        ...sessionData,
+        parts: selectedParts,
+        partName: selectedParts.join(' + '),
+        clientId: client.idNumber,
+        clientName: client.fullName,
+        timestamp: currentDate.toISOString(),
+        date: currentDate.toLocaleDateString('en-GB'),
+        gregorianDate: currentDate.toISOString().split('T')[0],
+        sessionId: sessionId,
+        paidAmount: sessionData.paidAmount || "0",
+        remainingAmount: sessionData.remainingAmount || sessionData.amount,
+        paymentStatus: sessionData.paymentStatus || "غير مدفوع",
+        areasCount: selectedParts.length,
+        areas: selectedParts,
+        therapist: sessionData.therapist || "غير محدد",
+        appliedDiscounts: selectedDiscounts,
+        originalPrice: sessionData.originalPrice || "0",
+        discountedPrice: sessionData.discountedPrice || sessionData.amount || "0"
+      };
+      
+      await set(newRef, toSave);
+      onSaveSession?.(toSave);
+      
+      setSelectedParts([]);
+      setShowSessionModal(false);
+      setSelectedDiscounts([]);
+      return { success: true, message: `تمت إضافة جلسة واحدة تشمل ${selectedParts.length} منطقة` };
+    } catch (err) {
+      console.error(err);
+      return { success: false, message: "خطأ أثناء الحفظ" };
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const allSessions = useMemo(
     () => Object.values(sessionsByPart).flat(),
@@ -874,28 +864,28 @@ const addSession = async (sessionData) => {
             </div>
           </div>
 
-<div className="buttons">
-  <button
-    className="btn ghost"
-    onClick={() => setSelectedParts([])}
-    style={{ minHeight: '44px' }}
-  >
-    <span className="button-text">إلغاء التحديد</span>
-  </button>
-  <button
-    className={`btn primary ${selectedParts.length === 0 ? "disabled" : ""}`}
-    disabled={selectedParts.length === 0}
-    onClick={() => setShowSessionModal(true)}
-    style={{ 
-      minHeight: '44px',
-      minWidth: '140px'
-    }}
-  >
-    <span className="button-text">
-      حفظ جلسات ({selectedParts.length})
-    </span>
-  </button>
-</div>
+          <div className="buttons">
+            <button
+              className="btn ghost"
+              onClick={() => setSelectedParts([])}
+              style={{ minHeight: '44px' }}
+            >
+              <span className="button-text">إلغاء التحديد</span>
+            </button>
+            <button
+              className={`btn primary ${selectedParts.length === 0 ? "disabled" : ""}`}
+              disabled={selectedParts.length === 0}
+              onClick={() => setShowSessionModal(true)}
+              style={{ 
+                minHeight: '44px',
+                minWidth: '140px'
+              }}
+            >
+              <span className="button-text">
+                حفظ جلسات ({selectedParts.length})
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
