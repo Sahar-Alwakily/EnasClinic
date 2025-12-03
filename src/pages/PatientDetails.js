@@ -59,6 +59,7 @@ export default function PatientDetails() {
       feet: "القدمين",
       bikiniArea: "البكيني",
       fullbody: "كامل الجسم",
+      body: "الجسم",
     };
     return areaNames[area] || area;
   };
@@ -76,12 +77,12 @@ export default function PatientDetails() {
   const renderYesNo = (value) => (
     <span
       className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-        value
+        value === true || value === "true"
           ? "bg-green-100 text-green-700 border border-green-300"
           : "bg-gray-200 text-gray-600 border border-gray-300"
       }`}
     >
-      {value ? "نعم" : "لا"}
+      {value === true || value === "true" ? "نعم" : "لا"}
     </span>
   );
 
@@ -154,15 +155,20 @@ export default function PatientDetails() {
         {activeSection === "info" && (
           <div className="space-y-4">
             <GlassCard title="المعلومات الشخصية">
-              <Info label="الاسم الكامل" value={patient.fullName} />
-              <Info label="رقم الهوية" value={patient.idNumber} />
-              <Info label="رقم الهاتف" value={patient.phone} />
-              <Info label="تاريخ الميلاد" value={patient.birthDate} />
+              <Info label="الاسم الكامل" value={patient.fullName || "غير محدد"} />
+              <Info label="رقم الهوية" value={patient.idNumber || "غير محدد"} />
+              <Info label="رقم الهاتف" value={patient.phone || "غير محدد"} />
+              <Info label="تاريخ الميلاد" value={patient.birthDate || "غير محدد"} />
+              <Info label="تاريخ التسجيل" value={patient.date || "غير محدد"} />
             </GlassCard>
 
             <GlassCard title="الحساسية">
               <Info label="حساسية الخبز" value={renderYesNo(patient.allergyBread)} />
               <Info label="حساسية الحليب" value={renderYesNo(patient.allergyMilk)} />
+              <Info 
+                label="حساسيات أخرى" 
+                value={patient.allergiesText || "لا توجد حساسيات أخرى"} 
+              />
             </GlassCard>
           </div>
         )}
@@ -170,15 +176,142 @@ export default function PatientDetails() {
         {/* HEALTH */}
         {activeSection === "health" && (
           <div className="space-y-4">
+            {/* الصحة العامة */}
             <GlassCard title="الصحة العامة">
-              <Info label="الحالة الصحية" value={patient.healthStatus} />
+              <Info label="الحالة الصحية" value={patient.healthStatus || "غير محددة"} />
               <Info label="ممارسة الرياضة" value={renderYesNo(patient.exercise)} />
               <Info label="الحمل" value={renderYesNo(patient.pregnancy)} />
+              <Info label="الدورة الشهرية" value={renderYesNo(patient.menstrualCycle)} />
+              <Info label="التدخين" value={renderYesNo(patient.smoking)} />
+              <Info label="مشروبات الطاقة" value={renderYesNo(patient.energyDrinks)} />
+              <Info label="المكملات الغذائية" value={renderYesNo(patient.supplements)} />
+              {patient.supplements && (
+                <Info 
+                  label="نوع المكملات" 
+                  value={patient.supplementsType || "غير محدد"} 
+                />
+              )}
             </GlassCard>
 
+            {/* الأمراض المزمنة */}
+            <GlassCard title="الأمراض المزمنة">
+              {patient.chronicConditions ? (
+                <div className="space-y-2">
+                  {Object.entries({
+                    diabetes: "السكري",
+                    bloodPressure: "ضغط الدم",
+                    heartDisease: "أمراض القلب",
+                    thyroid: "الغدة الدرقية",
+                    anemia: "فقر الدم",
+                    epilepsy: "الصرع",
+                    cancer: "السرطان",
+                    kidney: "أمراض الكلى",
+                    headache: "الصداع المزمن",
+                    pcod: "متلازمة تكيس المبايض",
+                    shortBreath: "ضيق التنفس",
+                    hormoneDisorder: "اضطرابات هرمونية",
+                    immuneDisease: "أمراض المناعة",
+                    bloodClot: "تجلط الدم"
+                  }).map(([key, label]) => (
+                    <Info 
+                      key={key}
+                      label={label} 
+                      value={renderYesNo(patient.chronicConditions[key])} 
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-2">لا توجد بيانات للأمراض المزمنة</p>
+              )}
+            </GlassCard>
+
+            {/* الأمراض الجلدية */}
             <GlassCard title="الأمراض الجلدية">
               <Info label="أمراض جلدية" value={renderYesNo(patient.skinDiseases)} />
+              <Info 
+                label="تفاصيل الجلد" 
+                value={patient.skinDetails || "لا توجد تفاصيل"} 
+              />
+              <Info 
+                label="العلاجات السابقة" 
+                value={patient.previousTreatments || "لا توجد علاجات سابقة"} 
+              />
             </GlassCard>
+
+            {/* الأدوية اليومية */}
+            <GlassCard title="الأدوية اليومية">
+              <Info 
+                label="أدوية يومية" 
+                value={renderYesNo(patient.dailyMedications?.medications)} 
+              />
+              {patient.dailyMedications?.medications && patient.dailyMedications?.type && (
+                <Info 
+                  label="نوع الأدوية" 
+                  value={patient.dailyMedications.type} 
+                />
+              )}
+            </GlassCard>
+
+            {/* الأدوية الإضافية */}
+            {(patient.dailyMedicationsExtra && Object.keys(patient.dailyMedicationsExtra).length > 0) ? (
+              <GlassCard title="الأدوية الإضافية">
+                <div className="space-y-2">
+                  {Object.entries({
+                    roaccutane: "روأكيوتان",
+                    contraceptive: "مانع الحمل",
+                    antidepressant: "مضاد الاكتئاب",
+                    sedative: "مهدئ",
+                    sleepingPill: "حبوب نوم",
+                    biotica: "مضاد حيوي"
+                  }).map(([key, label]) => (
+                    patient.dailyMedicationsExtra[key] !== undefined && (
+                      <Info 
+                        key={key}
+                        label={label} 
+                        value={renderYesNo(patient.dailyMedicationsExtra[key])} 
+                      />
+                    )
+                  ))}
+                  {patient.dailyMedicationsExtra.other && (
+                    <Info 
+                      label="أدوية أخرى" 
+                      value={patient.dailyMedicationsExtra.other} 
+                    />
+                  )}
+                </div>
+              </GlassCard>
+            ) : null}
+
+            {/* منتجات العناية */}
+            {patient.cosmetics ? (
+              <GlassCard title="منتجات العناية المستخدمة">
+                <div className="space-y-2">
+                  {Object.entries({
+                    moisturizer: "مرطب",
+                    sunscreen: "واقي شمس",
+                    serum: "سيروم",
+                    soap: "صابون",
+                    exfoliation: "مقشر",
+                    roaccutane: "روأكيوتان (عناية)",
+                    biotica: "مضاد حيوي (عناية)"
+                  }).map(([key, label]) => (
+                    patient.cosmetics[key] !== undefined && (
+                      <Info 
+                        key={key}
+                        label={label} 
+                        value={renderYesNo(patient.cosmetics[key])} 
+                      />
+                    )
+                  ))}
+                  {patient.cosmetics.otherMedications && (
+                    <Info 
+                      label="أدوية عناية أخرى" 
+                      value={patient.cosmetics.otherMedications} 
+                    />
+                  )}
+                </div>
+              </GlassCard>
+            ) : null}
           </div>
         )}
 

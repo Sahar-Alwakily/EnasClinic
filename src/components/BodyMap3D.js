@@ -1,4 +1,4 @@
-// BodyMap3D.js - الإصدار النهائي
+// BodyMap3D.js - الإصدار النهائي مع إمكانية اختيار التاريخ
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
@@ -21,73 +21,193 @@ const COLORS = {
   error: "#EF4444",
 };
 
-// خريطة أسماء المناطق - مصححة وموسعة
-const areaNameMap = {
+// خريطة أسماء المناطق بالعربي والإنجليزي مع تصحيح للأسماء
+const areaMaps = {
+  // العربية ← الإنجليزية
+  arToEn: {
+    'البطن': 'abdomen',
+    'منطقة البيكيني': 'bikiniArea',
+    'الفخذين': 'thighs',
+    'الظهر': 'back',
+    'الكوع': 'elbow',
+    'الذراع': 'arm',
+    'الإبط': 'armpit',
+    'الرقبة': 'neck',
+    'الوجه': 'face',
+    'اليد': 'hand',
+    'القدمين': 'feet',
+    'الساق': 'shin',
+    'الجسم كامل': 'fullbody',
+    'العانة': 'bikiniArea'
+  },
+  
+  // الإنجليزية ← العربية
+  enToAr: {
+    'abdomen': 'البطن',
+    'bikiniArea': 'منطقة البيكيني',
+    'thighs': 'الفخذين',
+    'back': 'الظهر',
+    'elbow': 'الكوع',
+    'arm': 'الذراع',
+    'armpit': 'الإبط',
+    'neck': 'الرقبة',
+    'face': 'الوجه',
+    'hand': 'اليد',
+    'feet': 'القدمين',
+    'shin': 'الساق',
+    'fullbody': 'الجسم كامل',
+    'body': 'الجسم كامل',
+    'stomach': 'البطن',
+    'leg': 'الساق',
+    'arms': 'الذراع',
+    'hands': 'اليد',
+    'foot': 'القدمين',
+    'Thighs': 'الفخذين',
+    'Shin': 'الساق',
+    'Back': 'الظهر',
+    'Abdomen': 'البطن'
+  }
+};
+
+// أسماء المناطق المستخدمة في النموذج 3D (يجب أن تتطابق مع أسماء الـ meshes في model.glb)
+const modelPartNames = {
+  // منطقة البطن
   'Abdomen': 'البطن',
-  'BikiniArea': 'منطقة البيكيني', 
-  'Thighs': 'الفخذين',
-  'Back': 'الظهر',
-  'Elbow': 'الكوع',
-  'Arm': 'الذراع',
-  'Armpit': 'الإبط',
-  'Neck': 'الرقبة',
-  'Face': 'الوجه',
-  'Hand': 'اليد',
-  'Feet': 'القدمين',
-  'Shin': 'الساق',
-  'Fullbody': 'الجسم كامل',
-  'body': 'الجسم كامل'
-};
-
-// خريطة الأسعار العكسية للبحث
-const reverseAreaMap = {
-  'البطن': 'Abdomen',
-  'منطقة البيكيني': 'BikiniArea',
-  'الفخذين': 'Thighs',
-  'الظهر': 'Back',
-  'الكوع': 'Elbow',
-  'الذراع': 'Arm',
-  'الإبط': 'Armpit',
-  'الرقبة': 'Neck',
-  'الوجه': 'Face',
-  'اليد': 'Hand',
-  'القدمين': 'Feet',
-  'الساق': 'Shin',
-  'الجسم كامل': 'Fullbody'
-};
-
-const englishAreaMap = {
   'abdomen': 'البطن',
-  'bikiniarea': 'منطقة البيكيني',
+  'stomach': 'البطن',
+  
+  // منطقة البيكيني
+  'BikiniArea': 'منطقة البيكيني',
+  'bikiniArea': 'منطقة البيكيني',
+  'bikini': 'منطقة البيكيني',
+  
+  // الفخذين
+  'Thighs': 'الفخذين',
   'thighs': 'الفخذين',
+  'thigh': 'الفخذين',
+  
+  // الظهر
+  'Back': 'الظهر',
   'back': 'الظهر',
+  
+  // الكوع
+  'Elbow': 'الكوع',
   'elbow': 'الكوع',
+  
+  // الذراع
+  'Arm': 'الذراع',
   'arm': 'الذراع',
+  'arms': 'الذراع',
+  
+  // الإبط
+  'Armpit': 'الإبط',
   'armpit': 'الإبط',
+  'underarm': 'الإبط',
+  
+  // الرقبة
+  'Neck': 'الرقبة',
   'neck': 'الرقبة',
+  
+  // الوجه
+  'Face': 'الوجه',
   'face': 'الوجه',
+  
+  // اليد
+  'Hand': 'اليد',
   'hand': 'اليد',
+  'hands': 'اليد',
+  
+  // القدمين
+  'Feet': 'القدمين',
   'feet': 'القدمين',
+  'foot': 'القدمين',
+  
+  // الساق
+  'Shin': 'الساق',
   'shin': 'الساق',
-  'fullbody': 'الجسم كامل'
+  'legs': 'الساق',
+  
+  // الجسم كامل
+  'Fullbody': 'الصدر ',
+  'fullbody': ' الصدر',
+  'body': ' الصدر'
+};
+
+// دالة لتحويل أسماء المناطق في الجلسات إلى عربية
+const convertSessionPartsToArabic = (parts) => {
+  if (!parts) return [];
+  
+  if (Array.isArray(parts)) {
+    return parts.map(part => {
+      // تنظيف النص من المسافات الزائدة
+      const cleanPart = part.trim();
+      
+      // إذا كان الجزء بالفعل عربي، إرجاعه كما هو
+      if (Object.keys(areaMaps.arToEn).some(arabicName => 
+          cleanPart.includes(arabicName) || arabicName.includes(cleanPart))) {
+        return cleanPart;
+      }
+      
+      // إذا كان إنجليزي، تحويله إلى عربي
+      // البحث في جميع الأشكال المحتملة
+      for (const [en, ar] of Object.entries(areaMaps.enToAr)) {
+        if (cleanPart.toLowerCase().includes(en.toLowerCase()) || 
+            en.toLowerCase().includes(cleanPart.toLowerCase())) {
+          return ar;
+        }
+      }
+      
+      // إذا لم يتم العثور على ترجمة، إرجاع النص كما هو
+      return cleanPart;
+    });
+  }
+  
+  // إذا كان نص واحد
+  if (typeof parts === 'string') {
+    const cleanPart = parts.trim();
+    
+    // تحقق إذا كان النص بالفعل عربي
+    const arabicRegex = /[\u0600-\u06FF]/;
+    if (arabicRegex.test(cleanPart)) {
+      return [cleanPart];
+    }
+    
+    // إذا كان إنجليزي، حاول تحويله
+    for (const [en, ar] of Object.entries(areaMaps.enToAr)) {
+      if (cleanPart.toLowerCase().includes(en.toLowerCase()) || 
+          en.toLowerCase().includes(cleanPart.toLowerCase())) {
+        return [ar];
+      }
+    }
+    
+    return [cleanPart];
+  }
+  
+  return [];
 };
 
 /* ----------------- WomanModel (3D) ----------------- */
 function WomanModel({ selectedParts = [], togglePart }) {
   const { scene } = useGLTF("/model.glb");
+  
   useEffect(() => {
     if (!scene) return;
+    
     scene.traverse((child) => {
       if (child.isMesh) {
         child.material = child.material.clone();
-        // تحويل الاسم الإنجليزي إلى عربي للتحقق من التحديد
-        const arabicName = englishAreaMap[child.name] || child.name;
+        
+        // تحويل اسم المنطقة من الإنجليزية إلى العربية
+        const arabicName = modelPartNames[child.name] || child.name;
         const isSelected = selectedParts.includes(arabicName);
         const color = isSelected ? COLORS.primary : "#eeeeee";
+        
         try {
           child.material.color.set(color);
           child.material.needsUpdate = true;
-        } catch {}
+        } catch (e) {
+          console.log("Error updating material for:", child.name, e);
+        }
       }
     });
   }, [scene, selectedParts]);
@@ -96,12 +216,17 @@ function WomanModel({ selectedParts = [], togglePart }) {
     (e) => {
       e.stopPropagation();
       const name = e.object?.name;
-      if (name) togglePart(name);
+      if (name) {
+        // تحويل اسم المنطقة إلى العربية قبل إرساله
+        const arabicName = modelPartNames[name] || name;
+        togglePart(arabicName);
+      }
     },
     [togglePart]
   );
 
   if (!scene) return null;
+  
   return (
     <primitive
       object={scene}
@@ -116,19 +241,43 @@ function WomanModel({ selectedParts = [], togglePart }) {
 function groupSessionsByDateArray(sessionsArray = []) {
   const grouped = {};
   sessionsArray.forEach((s) => {
-    // استخدام التاريخ الميلادي للتجميع
-    const dateKey = s.date || 
-                   s.gregorianDate || 
-                   (s.timestamp ? new Date(s.timestamp).toLocaleDateString('en-GB') : "No Date");
+    // استخدام التاريخ الميلادي للتجميع - تنسيق DD/MM/YYYY
+    let dateKey = s.date || s.gregorianDate || "No Date";
+    
+    // إذا كان التاريخ يحتوي على خط مائل عكسي، نصححه
+    if (dateKey.includes('-')) {
+      // تنسيق YYYY-MM-DD إلى DD/MM/YYYY
+      const [year, month, day] = dateKey.split('-');
+      dateKey = `${day}/${month}/${year}`;
+    }
+    
     if (!grouped[dateKey]) grouped[dateKey] = [];
-    grouped[dateKey].push(s);
+    
+    // تحويل أسماء المناطق في الجلسة إلى عربية قبل التخزين
+    const sessionWithArabicParts = {
+      ...s,
+      parts: convertSessionPartsToArabic(s.parts),
+      partName: s.partName ? convertSessionPartsToArabic([s.partName])[0] : s.partName
+    };
+    
+    grouped[dateKey].push(sessionWithArabicParts);
   });
+  
   return Object.keys(grouped)
     .map((d) => ({ date: d, sessions: grouped[d] }))
     .sort((a, b) => {
-      const da = new Date(a.date);
-      const db = new Date(b.date);
-      return db - da;
+      // تحويل التواريخ لمقارنتها
+      const parseDate = (dateStr) => {
+        if (dateStr === "No Date") return new Date(0);
+        
+        // تنسيق DD/MM/YYYY
+        const [day, month, year] = dateStr.split('/').map(Number);
+        return new Date(year, month - 1, day);
+      };
+      
+      const da = parseDate(a.date);
+      const db = parseDate(b.date);
+      return db - da; // ترتيب تنازلي (الأحدث أولاً)
     });
 }
 
@@ -250,22 +399,91 @@ function SessionsTimeline({ groupedDates = [] }) {
     );
   }
 
+  // دالة لعرض التاريخ الميلادي بأرقام إنجليزية
+  const formatGregorianDate = (dateStr) => {
+    if (dateStr === "No Date") return "بدون تاريخ";
+    
+    try {
+      // تحويل من DD/MM/YYYY إلى تاريخ
+      if (dateStr.includes('/')) {
+        const [day, month, year] = dateStr.split('/');
+        return `${day}/${month}/${year}`;
+      }
+      
+      // إذا كان بصيغة YYYY-MM-DD
+      if (dateStr.includes('-')) {
+        const [year, month, day] = dateStr.split('-');
+        return `${day}/${month}/${year}`;
+      }
+      
+      return dateStr;
+    } catch (error) {
+      return dateStr;
+    }
+  };
+
+  // دالة لعرض الوقت بتنسيق 24 ساعة
+  const formatTime = (timestamp) => {
+    if (!timestamp) return '--:--';
+    
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) return '--:--';
+      
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      return '--:--';
+    }
+  };
+
+  // دالة لتحويل حالة الدفع إلى نص عربي
+  const getPaymentStatusText = (status) => {
+    if (!status) return 'غير محدد';
+    
+    const statusMap = {
+      'كامل': '✅ مدفوع بالكامل',
+      'full': '✅ مدفوع بالكامل',
+      'paid': '✅ مدفوع بالكامل',
+      'جزئي': '💰 مدفوع جزئياً',
+      'partial': '💰 مدفوع جزئياً',
+      'unpaid': '❌ غير مدفوع',
+      'غير مدفوع': '❌ غير مدفوع'
+    };
+    
+    return statusMap[status] || status;
+  };
+
   return (
     <div className="timeline">
       {groupedDates.map((group) => (
         <div key={group.date} className="timeline-item">
           <div className="timeline-left">
             <div className="date-badge">
-              {group.date}
+              {formatGregorianDate(group.date)}
             </div>
             <div className="vline" />
           </div>
           <div className="timeline-right">
-            {group.sessions.map((s) => (
-              <div key={s.id || s.timestamp} className="session-card">
+            {group.sessions.map((s, index) => (
+              <div key={s.id || s.timestamp || index} className="session-card">
+                <div className="session-header">
+                  <div className="session-time">
+                    <span className="time-icon">🕐</span>
+                    {formatTime(s.timestamp)}
+                  </div>
+                  <div className="session-status">
+                    <span className={`status-badge ${s.paymentStatus === 'كامل' || s.paymentStatus === 'full' || s.paymentStatus === 'paid' ? 'paid' : 
+                                     s.paymentStatus === 'جزئي' || s.paymentStatus === 'partial' ? 'partial' : 'unpaid'}`}>
+                      {getPaymentStatusText(s.paymentStatus)}
+                    </span>
+                  </div>
+                </div>
+                
                 <div className="session-row">
                   <div className="session-parts">
-                    {(s.partName ? [s.partName] : s.parts || []).map((p, i) => (
+                    {(s.parts || []).map((p, i) => (
                       <span className="chip" key={i}>
                         {p}
                       </span>
@@ -278,9 +496,50 @@ function SessionsTimeline({ groupedDates = [] }) {
                     )}
                   </div>
                 </div>
-                {s.notes && <div className="notes">📝 {s.notes}</div>}
-                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
-                  {s.therapist && `👨‍⚕️ ${s.therapist}`}
+                
+                {s.appliedDiscounts && s.appliedDiscounts.length > 0 && (
+                  <div className="session-discounts">
+                    <span className="discount-icon">🎯</span>
+                    {s.appliedDiscounts.map((discount, idx) => (
+                      <span key={idx} className="discount-tag">
+                        {areaMaps.enToAr[discount] || discount}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                {s.notes && (
+                  <div className="notes">
+                    <span className="notes-icon">📝</span>
+                    {s.notes}
+                  </div>
+                )}
+                
+                <div className="session-footer">
+                  {s.therapist && s.therapist !== "غير محدد" && (
+                    <div className="therapist-info">
+                      <span className="therapist-icon">👨‍⚕️</span>
+                      المعالج: {s.therapist}
+                    </div>
+                  )}
+                  
+                  {s.originalPrice && s.discountedPrice && 
+                   parseInt(s.originalPrice) > parseInt(s.discountedPrice) && (
+                    <div className="price-info">
+                      <span className="original-price">{s.originalPrice} ₪</span>
+                      <span className="discount-arrow">→</span>
+                      <span className="final-price">{s.discountedPrice} ₪</span>
+                    </div>
+                  )}
+                  
+                  {s.paidAmount && parseInt(s.paidAmount) > 0 && (
+                    <div className="payment-info">
+                      <span className="paid-amount">💰 مدفوع: {s.paidAmount} ₪</span>
+                      {s.remainingAmount && parseInt(s.remainingAmount) > 0 && (
+                        <span className="remaining-amount"> | متبقي: {s.remainingAmount} ₪</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -308,49 +567,65 @@ function SessionModal({
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("جزئي");
   const [therapist, setTherapist] = useState(""); 
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // التاريخ الافتراضي هو اليوم
 
-  // دالة محسنة للحصول على السعر الصحيح
-  const getPartPrice = useCallback((part) => {
+  // دالة للحصول على السعر الصحيح بناءً على المنطقة بالعربية
+  const getPartPrice = useCallback((arabicPart) => {
     if (!prices || Object.keys(prices).length === 0) {
       console.log('No prices available');
       return 0;
     }
 
-    // تحويل الاسم العربي إلى إنجليزي للبحث في الأسعار
-    const englishPart = reverseAreaMap[part] || part;
+    // تحويل المنطقة من العربية إلى الإنجليزية للبحث في الأسعار
+    const englishPart = areaMaps.arToEn[arabicPart] || arabicPart;
     
     // جميع المفاتيح المحتملة للبحث
     const possibleKeys = [
-      englishPart, // الاسم الإنجليزي
+      englishPart, // الاسم الإنجليزي المباشر
       englishPart.toLowerCase(), // بالإحرف الصغيرة
-      part, // الاسم العربي الأصلي
-      // البحث في الخرائط
-      reverseAreaMap[part], // البحث العكسي
-      englishAreaMap[englishPart?.toLowerCase()], // من الإنجليزية للعربية
-      // محاولة مطابقة جزئية
+      arabicPart, // الاسم العربي الأصلي
+      // البحث في جميع الأشكال المحتملة
       ...Object.keys(prices).filter(key => 
+        key.toLowerCase() === englishPart.toLowerCase() ||
         key.toLowerCase().includes(englishPart.toLowerCase()) || 
         englishPart.toLowerCase().includes(key.toLowerCase()) ||
-        key.toLowerCase().includes(part.toLowerCase()) ||
-        part.toLowerCase().includes(key.toLowerCase())
+        key.toLowerCase().includes(arabicPart.toLowerCase()) ||
+        arabicPart.toLowerCase().includes(key.toLowerCase())
       )
-    ].filter(Boolean); // إزالة القيم الفارغة
+    ].filter(Boolean);
 
-    console.log(`🔍 Searching price for: "${part}" (English: "${englishPart}")`);
-    console.log('🔑 Possible keys:', possibleKeys);
-    console.log('💰 Available prices:', prices);
+    console.log(`🔍 البحث عن سعر المنطقة: "${arabicPart}" (إنجليزي: "${englishPart}")`);
+    console.log('🔑 المفاتيح المحتملة:', possibleKeys);
+    console.log('💰 الأسعار المتاحة:', prices);
 
     for (const key of possibleKeys) {
       if (prices[key] !== undefined && prices[key] !== null && prices[key] !== "") {
         const priceValue = parseInt(prices[key]);
         if (!isNaN(priceValue) && priceValue > 0) {
-          console.log(`✅ Found price for "${part}": ${priceValue} ₪ (key: ${key})`);
+          console.log(`✅ تم العثور على سعر المنطقة "${arabicPart}": ${priceValue} ₪ (مفتاح: ${key})`);
           return priceValue;
         }
       }
     }
 
-    console.log(`❌ No valid price found for: "${part}"`);
+    // محاولة البحث بالاسم الإنجليزي من خرائط النموذج
+    const modelEnglishNames = Object.entries(modelPartNames)
+      .filter(([en, ar]) => ar === arabicPart)
+      .map(([en, ar]) => en);
+    
+    for (const modelName of modelEnglishNames) {
+      for (const key of Object.keys(prices)) {
+        if (key.toLowerCase() === modelName.toLowerCase()) {
+          const priceValue = parseInt(prices[key]);
+          if (!isNaN(priceValue) && priceValue > 0) {
+            console.log(`✅ تم العثور على السعر عبر اسم النموذج: "${arabicPart}": ${priceValue} ₪`);
+            return priceValue;
+          }
+        }
+      }
+    }
+
+    console.log(`❌ لم يتم العثور على سعر صالح للمنطقة: "${arabicPart}"`);
     return 0;
   }, [prices]);
 
@@ -363,7 +638,7 @@ function SessionModal({
       return total + price;
     }, 0);
 
-    console.log(`🏷️ Total calculated: ${calculatedTotal} ₪`);
+    console.log(`🏷️ المجموع الكلي: ${calculatedTotal} ₪`);
     return calculatedTotal;
   }, [selectedParts, prices, getPartPrice]);
 
@@ -387,7 +662,11 @@ function SessionModal({
         // البحث عن تخفيض لهذه المنطقة بالتحديد
         const partDiscount = areaDiscounts.find(discountKey => {
           const discount = applicableDiscounts.find(d => d && d.area === discountKey);
-          return discount && discount.area === (areaNameMap[part] || part.toLowerCase());
+          if (!discount) return false;
+          
+          // تحويل اسم المنطقة في التخفيض إلى عربي للمقارنة
+          const discountAreaAr = areaMaps.enToAr[discount.area] || discount.area;
+          return discountAreaAr === part;
         });
         
         if (partDiscount) {
@@ -434,20 +713,26 @@ function SessionModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    // تحويل التاريخ المحدد إلى تنسيقات مختلفة
+    const selectedDateObj = new Date(selectedDate);
+    const formattedDate = selectedDateObj.toLocaleDateString('en-GB'); // DD/MM/YYYY
+    const gregorianDate = selectedDate; // YYYY-MM-DD
+    
     const sessionData = {
       notes,
       paymentType,
       amount: discountedPrice.toString(),
       paidAmount: paidAmount || "0",
       remainingAmount: remainingAmount.toString(),
-      paymentStatus: paidAmount >= discountedPrice ? "كامل" : paymentStatus,
+      paymentStatus: paidAmount >= discountedPrice ? "كامل" : "جزئي",
       parts: selectedParts,
-      date: new Date().toLocaleDateString('en-GB'),
-      gregorianDate: new Date().toISOString().split('T')[0],
+      date: formattedDate,
+      gregorianDate: gregorianDate,
       therapist: therapist.trim(),
       appliedDiscounts: selectedDiscounts,
       originalPrice: totalPrice.toString(),
-      discountedPrice: discountedPrice.toString()
+      discountedPrice: discountedPrice.toString(),
+      timestamp: selectedDateObj.toISOString() // استخدام التاريخ المحدد للوقت
     };
 
     onSave(sessionData);
@@ -501,12 +786,12 @@ function SessionModal({
                       <span className="discount-text">
                         {discount.area === 'fullbody' ? (
                           <>
-                            <strong>👤 {discount.areaName}</strong> - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+                            <strong>👤 الجسم كامل</strong> - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
                             <span className="discount-note"> (على المجموع الكلي)</span>
                           </>
                         ) : (
                           <>
-                            {discount.areaName} - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+                            {areaMaps.enToAr[discount.area] || discount.area} - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
                             <span className="discount-note"> (على المنطقة فقط)</span>
                           </>
                         )}
@@ -603,14 +888,17 @@ function SessionModal({
             </div>
 
             <div className="input-group">
-              <label>التاريخ الميلادي:</label>
+              <label>تاريخ الجلسة:</label>
               <input
                 type="date"
-                value={new Date().toISOString().split('T')[0]}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
                 className="form-input"
-                readOnly
+                max={new Date().toISOString().split('T')[0]} // لا يمكن اختيار تاريخ في المستقبل
               />
-              <small className="date-note">يتم الحفظ تلقائياً بالتاريخ الميلادي</small>
+              <small className="date-note">
+                اختر تاريخ الجلسة (يمكن اختيار أي تاريخ ماضي)
+              </small>
             </div>
           </div>
           
@@ -661,17 +949,17 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   const [selectedDiscounts, setSelectedDiscounts] = useState([]);
   const [discounts, setDiscounts] = useState({});
 
-  // جلب الأسعار من Firebase - محسن
+  // جلب الأسعار من Firebase
   useEffect(() => {
     const pricesRef = ref(db, 'prices');
-    console.log('🔄 Fetching prices from Firebase...');
+    console.log('🔄 جلب الأسعار من Firebase...');
     const unsub = onValue(pricesRef, (snap) => {
       const pricesData = snap.val() || {};
-      console.log('✅ PRICES LOADED FROM FIREBASE:', pricesData);
-      console.log('📊 Price keys:', Object.keys(pricesData));
+      console.log('✅ تم تحميل الأسعار:', pricesData);
+      console.log('📊 مفاتيح الأسعار:', Object.keys(pricesData));
       setPrices(pricesData);
     }, (error) => {
-      console.error('❌ Error loading prices:', error);
+      console.error('❌ خطأ في تحميل الأسعار:', error);
     });
     return () => unsub();
   }, []);
@@ -682,10 +970,10 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
     const unsub = onValue(discountsRef, (snapshot) => {
       if (snapshot.exists()) {
         const discountsData = snapshot.val();
-        console.log('🎁 Discounts loaded:', discountsData);
+        console.log('🎁 التخفيضات المحملة:', discountsData);
         setDiscounts(discountsData);
       } else {
-        console.log('No discounts found');
+        console.log('لا توجد تخفيضات');
         setDiscounts({});
       }
     });
@@ -727,9 +1015,9 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       } 
       // تخفيضات المناطق - متاحة فقط إذا كانت المنطقة مطابقة
       else {
-        const hasMatchingArea = selectedParts.some(part => {
-          // تحويل الاسم العربي إلى إنجليزي للمقارنة
-          const englishPart = reverseAreaMap[part] || part.toLowerCase();
+        const hasMatchingArea = selectedParts.some(arabicPart => {
+          // تحويل المنطقة المحددة (بالعربي) إلى إنجليزي للمقارنة
+          const englishPart = areaMaps.arToEn[arabicPart] || arabicPart;
           const partKey = englishPart.toLowerCase();
           return partKey === discount.area;
         });
@@ -751,14 +1039,23 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
     const unsub = onValue(sessionsRef, (snap) => {
       const val = snap.val() || {};
       const arr = Object.entries(val).map(([id, s]) => ({ id, ...s }));
+      
+      // تحويل جميع أسماء المناطق في الجلسات إلى عربية
+      const arabicSessions = arr.map(session => ({
+        ...session,
+        parts: convertSessionPartsToArabic(session.parts),
+        partName: session.partName ? convertSessionPartsToArabic([session.partName])[0] : session.partName
+      }));
+      
       const byPart = {};
-      arr.forEach((s) => {
+      arabicSessions.forEach((s) => {
         const part = s.partName || "عام";
         if (!byPart[part]) byPart[part] = [];
         byPart[part].push(s);
       });
+      
       setSessionsByPart(byPart);
-      setGroupedSessions(groupSessionsByDateArray(arr));
+      setGroupedSessions(groupSessionsByDateArray(arabicSessions));
     });
     return () => unsub();
   }, [client?.idNumber]);
@@ -773,9 +1070,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   }, [client]);
 
   const togglePart = useCallback(
-    (name) => {
-      // تحويل الاسم الإنجليزي إلى عربي عند التحديد
-      const arabicName = englishAreaMap[name] || name;
+    (arabicName) => {
       setSelectedParts((prev) =>
         prev.includes(arabicName)
           ? prev.filter((p) => p !== arabicName)
@@ -794,7 +1089,11 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       const newRef = push(refSessions);
       
       const sessionId = newRef.key;
-      const currentDate = new Date();
+      
+      // تحويل أسماء التخفيضات إلى عربية للعرض
+      const arabicDiscounts = selectedDiscounts.map(discount => 
+        areaMaps.enToAr[discount] || discount
+      );
       
       const toSave = {
         ...sessionData,
@@ -802,9 +1101,9 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         partName: selectedParts.join(' + '),
         clientId: client.idNumber,
         clientName: client.fullName,
-        timestamp: currentDate.toISOString(),
-        date: currentDate.toLocaleDateString('en-GB'),
-        gregorianDate: currentDate.toISOString().split('T')[0],
+        timestamp: sessionData.timestamp || new Date().toISOString(), // استخدام وقت الجلسة المحدد
+        date: sessionData.date,
+        gregorianDate: sessionData.gregorianDate,
         sessionId: sessionId,
         paidAmount: sessionData.paidAmount || "0",
         remainingAmount: sessionData.remainingAmount || sessionData.amount,
@@ -812,7 +1111,8 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         areasCount: selectedParts.length,
         areas: selectedParts,
         therapist: sessionData.therapist || "غير محدد",
-        appliedDiscounts: selectedDiscounts,
+        appliedDiscounts: selectedDiscounts, // حفظ بالإنجليزية للبحث
+        appliedDiscountsArabic: arabicDiscounts, // حفظ بالعربية للعرض
         originalPrice: sessionData.originalPrice || "0",
         discountedPrice: sessionData.discountedPrice || sessionData.amount || "0"
       };
@@ -823,7 +1123,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       setSelectedParts([]);
       setShowSessionModal(false);
       setSelectedDiscounts([]);
-      return { success: true, message: `تمت إضافة جلسة واحدة تشمل ${selectedParts.length} منطقة` };
+      return { success: true, message: `تمت إضافة جلسة بتاريخ ${sessionData.date} تشمل ${selectedParts.length} منطقة` };
     } catch (err) {
       console.error(err);
       return { success: false, message: "خطأ أثناء الحفظ" };
@@ -926,7 +1226,10 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         </div>
 
         <div className="right-card">
-          <div className="section-title">الجلسات (Timeline)</div>
+          <div className="section-title">
+            <span className="timeline-icon">📅</span>
+            الجلسات - الخط الزمني
+          </div>
           <div className="timeline-wrap">
             <SessionsTimeline groupedDates={groupedSessions} />
           </div>

@@ -922,7 +922,6 @@
     align-items: center;
   }
 }
-/* إخفاء النص على الشاشات الصغيرة جداً */
 @media (max-width: 360px) {
   .button-text {
     font-size: 12px;

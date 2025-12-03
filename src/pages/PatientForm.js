@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ref, set } from "firebase/database";
 import { db } from "../firebaseConfig";
+import SignatureCanvas from 'react-signature-canvas';
 
 export default function PatientForm() {
   const navigate = useNavigate();
+  
+  // مراجع للتوقيعات
+  const clientSigRef = useRef();
 
   // الحالات لكل الحقول - متوافقة مع Firebase
   const [fullName, setFullName] = useState("");
@@ -59,8 +63,9 @@ export default function PatientForm() {
     "other": "",
   });
   const [previousTreatments, setPreviousTreatments] = useState("");
-  const [patientSignature, setPatientSignature] = useState("");
+  const [vellusHairConsent, setVellusHairConsent] = useState(false);
   const [date, setDate] = useState("");
+  const [clientSignatureData, setClientSignatureData] = useState("");
 
   // دالة محسنة لأزرار نعم/لا
   const renderYesNo = (label, value, setValue, isSmall = false) => (
@@ -104,6 +109,21 @@ export default function PatientForm() {
     </label>
   );
 
+  // دالة لمسح توقيع العميلة
+  const clearClientSignature = () => {
+    clientSigRef.current.clear();
+    setClientSignatureData("");
+  };
+
+  // دالة لحفظ التوقيع عند الانتهاء
+  const handleClientSignatureEnd = () => {
+    if (clientSigRef.current.isEmpty()) {
+      setClientSignatureData("");
+    } else {
+      setClientSignatureData(clientSigRef.current.toDataURL());
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -111,6 +131,16 @@ export default function PatientForm() {
       alert("الرجاء تعبئة الحقول الإلزامية (الاسم الكامل ورقم الهاتف)");
       return;
     }
+
+    if (!vellusHairConsent) {
+      alert("الرجاء الموافقة على إقرار الشعر الوبري");
+      return;
+    }
+
+    // الحصول على بيانات التوقيع
+    const finalClientSignature = clientSigRef.current.isEmpty() 
+      ? "" 
+      : clientSigRef.current.toDataURL();
 
     const patientId = idNumber || `patient-${Date.now()}`;
     
@@ -138,15 +168,16 @@ export default function PatientForm() {
       cosmetics,
       dailyMedicationsExtra,
       previousTreatments,
-      patientSignature,
+      vellusHairConsent,
+      clientSignature: finalClientSignature,
       date,
       createdAt: new Date().toISOString(),
     };
 
     try {
       await set(ref(db, `patients/${patientId}`), formData);
-      alert("تم حفظ بيانات المريض بنجاح!");
-      navigate("/add-session", { state: { patientId, clientName: fullName } });
+      alert("تم حفظ بيانات العميلة بنجاح!");
+      navigate("/dashboard");
     } catch (err) {
       console.error("Firebase Error:", err);
       alert("حدث خطأ أثناء حفظ البيانات: " + err.message);
@@ -209,9 +240,9 @@ export default function PatientForm() {
           <div className="inline-block bg-gradient-to-r from-purple-600 to-blue-500 p-0.5 rounded-xl mb-4 shadow-lg">
             <div className="bg-white rounded-lg px-6 py-4">
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
-                استمارة المريض
+                استمارة العميلة
               </h1>
-              <p className="text-gray-600 mt-1 text-sm">نظام إدارة بيانات المرضى المتكامل</p>
+              <p className="text-gray-600 mt-1 text-sm">نظام إدارة بيانات العملاء المتكامل</p>
             </div>
           </div>
         </div>
@@ -445,29 +476,143 @@ export default function PatientForm() {
             </div>
           </div>
 
-          {/* توقيع المريض والتاريخ */}
+          {/* قسم الشعر الوبري */}
+          <div className="bg-gradient-to-r from-rose-50 to-orange-50 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-rose-200/50">
+            <SectionHeader title="قسم الشعر الوبري" icon="⚠️" />
+            <div className="bg-white/90 rounded-xl p-5 border border-rose-300/30 shadow-sm">
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-rose-500 to-orange-500 rounded-full shadow-md">
+                  <span className="text-white text-xl font-bold">!</span>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="font-bold text-lg text-gray-800">
+                    إقرار خاص بالشعر الوبري
+                  </h4>
+                  <p className="text-gray-700 text-sm leading-relaxed">
+                    أقر أنني أريد إزالة الشعر الوبري من جميع أنحاء الجسم يشمل الوجه والرقبة والبطن والظهر والذراع
+                  </p>
+                  <p className="text-rose-600 font-semibold text-sm leading-relaxed bg-rose-50 p-3 rounded-lg border border-rose-200 mt-2">
+                    رغم علمي ومعرفتي من قبل الأخصائية أن الشعر الوبري إذا تم إزالته بالليزر سوف يتحفز ويصبح أكثر من قبل حتى لو تم عمله من قبل أو بمراكز أخرى
+                  </p>
+                </div>
+
+                <div className="w-full max-w-sm pt-4 border-t border-rose-200/50">
+                  <label className="flex items-center justify-center gap-3 cursor-pointer p-3 bg-white rounded-xl border border-rose-300/50 hover:border-rose-400 transition-colors duration-200">
+                    <input
+                      type="checkbox"
+                      checked={vellusHairConsent}
+                      onChange={(e) => setVellusHairConsent(e.target.checked)}
+                      required
+                      className="w-5 h-5 text-rose-500 focus:ring-rose-400 rounded"
+                    />
+                    <span className="font-medium text-gray-800 text-sm">
+                      ✓ أوافق على هذا الإقرار وأتحمل مسؤولية النتيجة
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* توقيع العميلة الإلكتروني */}
           <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg p-6 border border-white/50">
-            <SectionHeader title="التوقيع والموافقة" icon="✍️" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-700 mb-1">توقيع المريض</label>
-                <input 
-                  type="text" 
-                  placeholder="التوقيع..." 
-                  value={patientSignature} 
-                  onChange={(e) => setPatientSignature(e.target.value)} 
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all duration-200 bg-white/50 text-sm"
-                />
+            <SectionHeader title="توقيع العميلة الإلكتروني" icon="✍️" />
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">التوقيع الإلكتروني للعميلة</label>
+                    <div className="bg-white rounded-lg border border-gray-300 p-3">
+                      <SignatureCanvas
+                        ref={clientSigRef}
+                        penColor="#7c3aed"
+                        backgroundColor="#f8fafc"
+                        canvasProps={{
+                          width: 400,
+                          height: 200,
+                          className: 'sig-canvas w-full rounded-lg border border-gray-200'
+                        }}
+                        onEnd={handleClientSignatureEnd}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={clearClientSignature}
+                        className="px-4 py-2 text-sm bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors font-medium"
+                      >
+                        🗑️ مسح التوقيع
+                      </button>
+                      <p className="text-xs text-gray-500 mt-1">
+                        قم بالتوقيع في المربع أعلاه باستخدام الماوس أو الإصبع
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">تاريخ التوقيع</label>
+                    <input 
+                      type="date" 
+                      value={date} 
+                      onChange={(e) => setDate(e.target.value)} 
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all duration-200 bg-white text-sm"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-700 mb-1">التاريخ</label>
-                <input 
-                  type="date" 
-                  value={date} 
-                  onChange={(e) => setDate(e.target.value)} 
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all duration-200 bg-white/50 text-sm"
-                />
-              </div>
+              
+              {/* معاينة التوقيع */}
+              {clientSignatureData && (
+                <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border-2 border-dashed border-purple-300">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-md">
+                        <span className="text-white text-xl font-bold">✓</span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-purple-700 text-lg">توقيع إلكتروني معتمد</p>
+                        <p className="text-gray-600 text-sm">تم تسجيل توقيع العميلة بنجاح</p>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="inline-block bg-white/80 p-3 rounded-lg border border-purple-200">
+                        <p className="text-xs text-gray-500 mb-1">العميلة:</p>
+                        <p className="text-sm font-bold text-gray-800">{fullName || "غير محدد"}</p>
+                        <p className="text-xs text-gray-500 mt-2">التاريخ: {date || "غير محدد"}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* عرض مصغر للتوقيع */}
+                  <div className="mt-4 pt-4 border-t border-purple-200/50">
+                    <p className="text-xs text-gray-600 mb-2">معاينة التوقيع:</p>
+                    <div className="bg-white p-2 rounded-lg border border-gray-300 inline-block">
+                      <img 
+                        src={clientSignatureData} 
+                        alt="توقيع العميلة" 
+                        className="h-12 w-auto opacity-80"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* تحذير إذا لم يتم التوقيع */}
+              {!clientSignatureData && (
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-600">⚠️</span>
+                    <p className="text-sm text-amber-700">
+                      الرجاء التوقيع في المربع أعلاه للموافقة على جميع المعلومات المقدمة
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

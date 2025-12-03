@@ -68,7 +68,6 @@ export default function AddSession() {
           padding: 16px;
           position: sticky;
           top: 0;
-          z-index: 10;
           box-shadow: 0 2px 10px rgba(139, 95, 191, 0.3);
         }
 
