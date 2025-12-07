@@ -108,6 +108,16 @@ export default function PatientDetails() {
           >
             ←
           </button>
+          <div className="p-4 flex items-center justify-between">
+  
+  {/* أضف زر التعديل هنا */}
+  <button
+    onClick={() => navigate("/edit-patient", { state: { patientId, patient } })}
+    className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition"
+  >
+    تعديل المريض
+  </button>
+</div>
         </div>
 
         {/* Patient Card */}

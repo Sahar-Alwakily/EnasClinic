@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { ref, update } from "firebase/database";
 import { db } from "./firebaseConfig";
+import EditPatient from "./pages/EditPatient";
 
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
@@ -108,6 +109,7 @@ export default function App() {
                 user ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />
               } 
             />
+           <Route path="/edit-patient" element={<EditPatient />} />
 
             {/* Private Routes */}
             <Route
