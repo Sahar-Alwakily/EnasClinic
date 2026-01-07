@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ref, onValue, remove, update } from "firebase/database";
 import { db } from "../firebaseConfig";
+import { toEnglishNumbers } from "../utils/numberUtils";
 
 export default function PatientDetails() {
   const navigate = useNavigate();
@@ -424,7 +425,7 @@ function SessionsCalendar({ sessions, patientId, getAreaNameInArabic, getSession
         dateKey = new Date(session.timestamp).toISOString().split('T')[0];
       } else if (session.date) {
         // تحويل من DD/MM/YYYY إلى YYYY-MM-DD
-        const parts = session.date.split('/');
+        const parts = session.date.replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660).split('/');
         if (parts.length === 3) {
           dateKey = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
@@ -514,7 +515,7 @@ function SessionsCalendar({ sessions, patientId, getAreaNameInArabic, getSession
             ←
           </button>
           <h3 className="text-lg font-bold text-gray-800">
-            {arabicMonths[currentDate.getMonth()]} {currentDate.getFullYear()}
+            {arabicMonths[currentDate.getMonth()]} {toEnglishNumbers(currentDate.getFullYear())}
           </h3>
           <button
             onClick={goToNextMonth}
@@ -548,7 +549,7 @@ function SessionsCalendar({ sessions, patientId, getAreaNameInArabic, getSession
                 ${selectedSession?.day === day ? 'ring-2 ring-purple-500' : ''}
               `}
             >
-              {day}
+              {day ? toEnglishNumbers(day) : ''}
             </div>
           ))}
         </div>
@@ -567,7 +568,7 @@ function SessionsCalendar({ sessions, patientId, getAreaNameInArabic, getSession
         <div className="bg-white rounded-2xl shadow-lg p-4 animate-fadeIn">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-purple-700">
-              📅 جلسات يوم {selectedSession.day} {arabicMonths[currentDate.getMonth()]}
+              📅 جلسات يوم {toEnglishNumbers(selectedSession.day)} {arabicMonths[currentDate.getMonth()]} {toEnglishNumbers(currentDate.getFullYear())}
             </h3>
             <button
               onClick={() => setSelectedSession(null)}

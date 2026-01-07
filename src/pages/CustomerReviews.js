@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ref, onValue } from "firebase/database";
 import { db } from "../firebaseConfig";
+import { toEnglishNumbers, formatDate, formatDateTime } from "../utils/numberUtils";
 
 export default function CustomerReviews() {
   const [reviews, setReviews] = useState([]);
@@ -80,7 +81,7 @@ export default function CustomerReviews() {
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    {new Date(review.date).toLocaleDateString('ar-SA')}
+                    {formatDate(review.date)}
                   </div>
                 </div>
               </div>
@@ -89,7 +90,7 @@ export default function CustomerReviews() {
               <div className="flex mb-3">
                 {renderStars(parseInt(review.rating))}
                 <span className="text-sm text-gray-600 mr-2">
-                  ({review.rating}/5)
+                  ({toEnglishNumbers(review.rating)}/5)
                 </span>
               </div>
 
@@ -102,7 +103,7 @@ export default function CustomerReviews() {
 
               {/* الوقت */}
               <div className="mt-3 text-xs text-gray-500 text-left">
-                {new Date(review.timestamp).toLocaleString('ar-SA')}
+                {formatDateTime(review.timestamp)}
               </div>
             </div>
           ))}
