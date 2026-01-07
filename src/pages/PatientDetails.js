@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ref, onValue } from "firebase/database";
+import { ref, onValue, remove, update } from "firebase/database";
 import { db } from "../firebaseConfig";
 
 export default function PatientDetails() {
@@ -337,6 +337,7 @@ export default function PatientDetails() {
         {activeSection === "sessions" && (
           <SessionsCalendar 
             sessions={sessions} 
+            patientId={patientId}
             getAreaNameInArabic={getAreaNameInArabic}
             getSessionAreas={getSessionAreas}
           />
@@ -347,15 +348,66 @@ export default function PatientDetails() {
 }
 
 /* ---------- SESSIONS CALENDAR COMPONENT ----------- */
-function SessionsCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
+function SessionsCalendar({ sessions, patientId, getAreaNameInArabic, getSessionAreas }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedSession, setSelectedSession] = useState(null);
+  const [editingSession, setEditingSession] = useState(null);
+  const [newDate, setNewDate] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // أسماء الأشهر بالعربية
   const arabicMonths = [
     "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
     "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
   ];
+
+  // حذف جلسة
+  const handleDeleteSession = async (sessionId) => {
+    if (!window.confirm("هل أنت متأكد من حذف هذه الجلسة؟")) return;
+    
+    setIsDeleting(true);
+    try {
+      const sessionRef = ref(db, `sessions/${patientId}/${sessionId}`);
+      await remove(sessionRef);
+      setSelectedSession(null);
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      alert("حدث خطأ أثناء حذف الجلسة");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // تعديل تاريخ الجلسة
+  const handleUpdateDate = async (sessionId) => {
+    if (!newDate) {
+      alert("الرجاء اختيار تاريخ جديد");
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const sessionRef = ref(db, `sessions/${patientId}/${sessionId}`);
+      const dateObj = new Date(newDate);
+      const formattedDate = dateObj.toLocaleDateString('en-GB'); // DD/MM/YYYY
+      
+      await update(sessionRef, {
+        gregorianDate: newDate,
+        date: formattedDate,
+        timestamp: dateObj.toISOString()
+      });
+      
+      setEditingSession(null);
+      setNewDate("");
+      setSelectedSession(null);
+    } catch (error) {
+      console.error("Error updating session:", error);
+      alert("حدث خطأ أثناء تحديث التاريخ");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   // أسماء أيام الأسبوع بالعربية
   const arabicDays = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
@@ -528,9 +580,59 @@ function SessionsCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
           <div className="space-y-3">
             {selectedSession.sessions.map((session, idx) => {
               const areas = getSessionAreas(session);
+              const isEditing = editingSession === session.id;
               
               return (
                 <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  {/* أزرار التحكم */}
+                  <div className="flex justify-end gap-2 mb-3">
+                    <button
+                      onClick={() => {
+                        if (isEditing) {
+                          setEditingSession(null);
+                          setNewDate("");
+                        } else {
+                          setEditingSession(session.id);
+                          setNewDate(session.gregorianDate || "");
+                        }
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition"
+                    >
+                      <span>✏️</span>
+                      <span>{isEditing ? "إلغاء" : "تعديل التاريخ"}</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSession(session.id)}
+                      disabled={isDeleting}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition disabled:opacity-50"
+                    >
+                      <span>🗑️</span>
+                      <span>{isDeleting ? "جاري الحذف..." : "حذف"}</span>
+                    </button>
+                  </div>
+
+                  {/* نموذج تعديل التاريخ */}
+                  {isEditing && (
+                    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-sm font-medium text-blue-700 mb-2">تعديل التاريخ:</div>
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={newDate}
+                          onChange={(e) => setNewDate(e.target.value)}
+                          className="flex-1 px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                          onClick={() => handleUpdateDate(session.id)}
+                          disabled={isUpdating}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+                        >
+                          {isUpdating ? "جاري الحفظ..." : "حفظ"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* المناطق */}
                   <div className="mb-3">
                     <div className="text-xs text-gray-500 mb-2">المناطق:</div>
