@@ -181,22 +181,6 @@ function SessionsTimeline({ groupedDates = [] }) {
     }
   };
 
-  // دالة لعرض الوقت بتنسيق 24 ساعة
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '--:--';
-    
-    try {
-      const date = new Date(timestamp);
-      if (isNaN(date.getTime())) return '--:--';
-      
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      return `${hours}:${minutes}`;
-    } catch (error) {
-      return '--:--';
-    }
-  };
-
   return (
     <div className="timeline">
       {groupedDates.map((group) => (
@@ -211,9 +195,9 @@ function SessionsTimeline({ groupedDates = [] }) {
             {group.sessions.map((s, index) => (
               <div key={s.id || s.timestamp || index} className="session-card">
                 <div className="session-header">
-                  <div className="session-time">
-                    <span className="time-icon">🕐</span>
-                    {formatTime(s.timestamp)}
+                  <div className="session-date-display">
+                    <span className="date-icon">📅</span>
+                    <span className="date-text">{formatGregorianDate(group.date)}</span>
                   </div>
                 </div>
                 
