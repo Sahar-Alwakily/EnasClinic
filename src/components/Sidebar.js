@@ -8,7 +8,6 @@ export default function Sidebar({ open, setOpen, onLogout }) {
     { path: "/dashboard", icon: "📊", label: "لوحة التحكم" },
     { path: "/customers", icon: "👥", label: "العملاء" },
     { path: "/reviews", icon: "⭐", label: "تقييمات العملاء" },
-    { path: "/prices", icon: "💰", label: "الأسعار" },
   ];
 
   return (

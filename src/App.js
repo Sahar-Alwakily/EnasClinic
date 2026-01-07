@@ -8,7 +8,6 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerReviews from "./pages/CustomerReviews";
-import Prices from "./pages/Prices";
 import PatientForm from "./pages/PatientForm";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -128,10 +127,6 @@ export default function App() {
             <Route
               path="/SelectClient"
               element={user ? <SelectClient /> : <Navigate to="/login" />}
-            />
-            <Route
-              path="/prices"
-              element={user ? <Prices /> : <Navigate to="/login" />}
             />
             <Route 
               path="/add-client" 

@@ -12,11 +12,7 @@ export default function Dashboard({ user }) {
   const [stats, setStats] = useState({
     totalClients: 0,
     todaySessions: 0,
-    monthlyRevenue: 0,
-    totalSessions: 0,
-    satisfactionRate: "0%",
-    activeClients: 0,
-    monthlyGrowth: "0%"
+    totalSessions: 0
   });
   const [clientSessions, setClientSessions] = useState([]);
   const navigate = useNavigate();
@@ -46,43 +42,15 @@ export default function Dashboard({ user }) {
         const patientsSnapshot = await get(patientsRef);
         const totalClients = patientsSnapshot.exists() ? Object.keys(patientsSnapshot.val()).length : 0;
 
-        // جلب بيانات التقييمات
-        const reviewsRef = ref(db, 'reviews');
-        const reviewsSnapshot = await get(reviewsRef);
-        
-        let totalRating = 0;
-        let reviewCount = 0;
-        
-        if (reviewsSnapshot.exists()) {
-          const reviewsData = reviewsSnapshot.val();
-          Object.values(reviewsData).forEach(review => {
-            if (review.rating) {
-              totalRating += parseInt(review.rating);
-              reviewCount++;
-            }
-          });
-        }
-
-        // حساب معدل الرضا
-        const satisfactionRate = reviewCount > 0 
-          ? Math.round((totalRating / (reviewCount * 5)) * 100) 
-          : 0;
-
         // جلب بيانات الجلسات
         const sessionsRef = ref(db, 'sessions');
         const sessionsSnapshot = await get(sessionsRef);
         
         let todaySessions = 0;
         let totalSessions = 0;
-        let currentMonthRevenue = 0;
-        let previousMonthRevenue = 0;
         let clientsData = [];
         
         const today = new Date().toISOString().split('T')[0];
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-        const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
         if (sessionsSnapshot.exists()) {
           const sessionsData = sessionsSnapshot.val();
@@ -100,23 +68,6 @@ export default function Dashboard({ user }) {
               // جلسات اليوم
               if (session.date === today) {
                 todaySessions++;
-              }
-              
-              // حساب الإيرادات
-              if (session.amount) {
-                const sessionAmount = parseInt(session.amount) || 0;
-                const sessionDate = new Date(session.timestamp || session.date);
-                const sessionMonth = sessionDate.getMonth();
-                const sessionYear = sessionDate.getFullYear();
-                
-                // إيرادات الشهر الحالي
-                if (sessionMonth === currentMonth && sessionYear === currentYear) {
-                  currentMonthRevenue += sessionAmount;
-                }
-                // إيرادات الشهر الماضي
-                else if (sessionMonth === previousMonth && sessionYear === previousYear) {
-                  previousMonthRevenue += sessionAmount;
-                }
               }
               
               totalSessions++;
@@ -153,23 +104,10 @@ export default function Dashboard({ user }) {
         // ترتيب العملاء من الأحدث إلى الأقدم
         clientsData.sort((a, b) => new Date(b.lastSessionDate) - new Date(a.lastSessionDate));
 
-        // حساب نمو الإيرادات
-        let monthlyGrowth = "0%";
-        if (previousMonthRevenue > 0) {
-          const growth = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
-          monthlyGrowth = `${growth >= 0 ? '+' : ''}${Math.round(growth)}%`;
-        } else if (currentMonthRevenue > 0) {
-          monthlyGrowth = "+100%";
-        }
-
         setStats({
           totalClients,
           todaySessions,
-          monthlyRevenue: currentMonthRevenue,
-          totalSessions,
-          satisfactionRate: `${satisfactionRate}%`,
-          activeClients: totalClients,
-          monthlyGrowth
+          totalSessions
         });
 
         setClientSessions(clientsData);
@@ -228,7 +166,7 @@ export default function Dashboard({ user }) {
         <Header manager={manager} />
 
         {/* الإحصائيات في الأعلى - تصميم متجاوب */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           {/* إجمالي العملاء */}
           <div className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
             <div className="text-center">
@@ -250,14 +188,6 @@ export default function Dashboard({ user }) {
             <div className="text-center">
               <div className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.totalSessions}</div>
               <div className="text-xs sm:text-sm opacity-90 mt-1 sm:mt-2">إجمالي الجلسات</div>
-            </div>
-          </div>
-          
-          {/* دخل الشهر */}
-          <div className="bg-gradient-to-br from-orange-500 to-amber-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
-            <div className="text-center">
-              <div className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.monthlyRevenue} ₪ </div>
-              <div className="text-xs sm:text-sm opacity-90 mt-1 sm:mt-2">دخل الشهر</div>
             </div>
           </div>
         </div>
@@ -311,29 +241,6 @@ export default function Dashboard({ user }) {
                     <div className="text-xs opacity-90">تسجيل تقييم جديد</div>
                   </div>
                 </button>
-              </div>
-            </div>
-
-            {/* موجز سريع */}
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-4 sm:p-6 border border-white/50">
-              <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">📈 النظرة العامة</h3>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm text-gray-600">معدل الرضا</span>
-                  <span className="text-sm sm:text-lg font-bold text-green-600">{stats.satisfactionRate}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm text-gray-600">العملاء النشطين</span>
-                  <span className="text-sm sm:text-lg font-bold text-purple-600">{stats.activeClients}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm text-gray-600">نمو الإيرادات</span>
-                  <span className={`text-sm sm:text-lg font-bold ${
-                    stats.monthlyGrowth.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {stats.monthlyGrowth}
-                  </span>
-                </div>
               </div>
             </div>
 
