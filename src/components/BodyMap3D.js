@@ -196,13 +196,6 @@ function SessionsTimeline({ groupedDates = [] }) {
           <div className="timeline-right">
             {group.sessions.map((s, index) => (
               <div key={s.id || s.timestamp || index} className="session-card">
-                <div className="session-header">
-                  <div className="session-date-display">
-                    <span className="date-icon">📅</span>
-                    <span className="date-text">{formatGregorianDate(group.date)}</span>
-                  </div>
-                </div>
-                
                 <div className="session-row">
                   <div className="session-parts">
                     {(s.parts || []).map((p, i) => (
