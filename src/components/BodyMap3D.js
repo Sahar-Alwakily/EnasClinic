@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ref, set, push, onValue } from "firebase/database";
 import { db } from "../firebaseConfig";
+import { toEnglishNumbers } from "../utils/numberUtils";
 import "./BodyMap3D.css";
 
 /* --------------- Utility: group sessions by date --------------- */
@@ -166,16 +167,17 @@ function SessionsTimeline({ groupedDates = [] }) {
       // تحويل من DD/MM/YYYY إلى تاريخ
       if (dateStr.includes('/')) {
         const [day, month, year] = dateStr.split('/');
-        return `${day}/${month}/${year}`;
+        // تحويل الأرقام إلى إنجليزية
+        return `${toEnglishNumbers(day)}/${toEnglishNumbers(month)}/${toEnglishNumbers(year)}`;
       }
       
       // إذا كان بصيغة YYYY-MM-DD
       if (dateStr.includes('-')) {
         const [year, month, day] = dateStr.split('-');
-        return `${day}/${month}/${year}`;
+        return `${toEnglishNumbers(day)}/${toEnglishNumbers(month)}/${toEnglishNumbers(year)}`;
       }
       
-      return dateStr;
+      return toEnglishNumbers(dateStr);
     } catch (error) {
       return dateStr;
     }
