@@ -8,6 +8,9 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerReviews from "./pages/CustomerReviews";
+import Helpers from "./pages/Helpers";
+import Prices from "./pages/Prices";
+import Discounts from "./pages/Discounts";
 import PatientForm from "./pages/PatientForm";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -15,6 +18,7 @@ import AddSession from "./pages/AddSession";
 import AddReview from "./pages/AddReview";
 import PatientDetails from './pages/PatientDetails';
 import SelectClient from "./pages/SelectClient";
+import Payments from "./pages/Payments"; // أضيف هذا الاستيراد
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -117,8 +121,16 @@ export default function App() {
               element={user ? <Customers /> : <Navigate to="/login" />}
             />
             <Route
+              path="/payments" // أضيف هذا المسار
+              element={user ? <Payments /> : <Navigate to="/login" />}
+            />
+            <Route
               path="/reviews"
               element={user ? <CustomerReviews /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/helpers"
+              element={user ? <Helpers /> : <Navigate to="/login" />}
             />
             <Route
               path="/patient-details"
@@ -127,6 +139,10 @@ export default function App() {
             <Route
               path="/SelectClient"
               element={user ? <SelectClient /> : <Navigate to="/login" />}
+            />
+            <Route
+              path="/prices"
+              element={user ? <Prices /> : <Navigate to="/login" />}
             />
             <Route 
               path="/add-client" 
@@ -139,6 +155,10 @@ export default function App() {
             <Route 
               path="/add-review" 
               element={user ? <AddReview /> : <Navigate to="/login" />} 
+            />
+            <Route
+              path="/discounts"
+              element={user ? <Discounts /> : <Navigate to="/login" />}
             />
           </Routes>
         </main>
