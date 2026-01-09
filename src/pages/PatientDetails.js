@@ -131,9 +131,12 @@ export default function PatientDetails() {
             </button>
             <div className="flex items-center gap-2 flex-1 justify-end">
               <button
-                onClick={() => navigate("/SelectClient", { 
+                onClick={() => navigate("/add-session", { 
                   state: { 
-                    preselectedClient: { id: patientId, name: patient?.fullName } 
+                    patient: {
+                      ...patient,
+                      idNumber: patientId
+                    }
                   } 
                 })}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:opacity-90 transition shadow-sm whitespace-nowrap"
