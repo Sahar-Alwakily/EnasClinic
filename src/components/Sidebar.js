@@ -10,8 +10,6 @@ export default function Sidebar({ open, setOpen, onLogout }) {
     { path: "/payments", icon: "💳", label: "إدارة الدفعات" },
     { path: "/reviews", icon: "⭐", label: "تقييمات العملاء" },
     { path: "/helpers", icon: "👩‍💼", label: "المساعدات" },
-    { path: "/prices", icon: "💰", label: "الأسعار" },
-    { path: "/discounts", icon: "🎫", label: "التخفيضات" },
   ];
 
   return (

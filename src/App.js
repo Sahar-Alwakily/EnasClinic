@@ -9,8 +9,6 @@ import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerReviews from "./pages/CustomerReviews";
 import Helpers from "./pages/Helpers";
-import Prices from "./pages/Prices";
-import Discounts from "./pages/Discounts";
 import PatientForm from "./pages/PatientForm";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -140,10 +138,6 @@ export default function App() {
               path="/SelectClient"
               element={user ? <SelectClient /> : <Navigate to="/login" />}
             />
-            <Route
-              path="/prices"
-              element={user ? <Prices /> : <Navigate to="/login" />}
-            />
             <Route 
               path="/add-client" 
               element={user ? <PatientForm /> : <Navigate to="/login" />} 
@@ -155,10 +149,6 @@ export default function App() {
             <Route 
               path="/add-review" 
               element={user ? <AddReview /> : <Navigate to="/login" />} 
-            />
-            <Route
-              path="/discounts"
-              element={user ? <Discounts /> : <Navigate to="/login" />}
             />
           </Routes>
         </main>
