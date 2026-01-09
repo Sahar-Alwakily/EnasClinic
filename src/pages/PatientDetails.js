@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ref, onValue } from "firebase/database";
+import { ref, onValue, remove, update } from "firebase/database";
 import { db } from "../firebaseConfig";
 
 export default function PatientDetails() {
@@ -121,20 +121,32 @@ export default function PatientDetails() {
       <div className="min-h-screen bg-gray-50 md:bg-gray-100 pb-6 md:pb-20">
         {/* HEADER */}
         <div className="bg-white shadow-sm md:shadow-md rounded-b-2xl md:rounded-b-3xl pb-4 md:pb-6">
-          <div className="p-3 md:p-4 flex items-center justify-between">
+          <div className="p-3 md:p-4 flex items-center justify-between gap-2">
             <button
               onClick={() => navigate(-1)}
-              className="text-gray-600 hover:text-gray-900 text-xl md:text-2xl p-2 hover:bg-gray-100 rounded-lg transition"
+              className="text-gray-600 hover:text-gray-900 text-xl md:text-2xl p-2 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
               aria-label="رجوع"
             >
               ←
             </button>
-            <button
-              onClick={() => navigate("/edit-patient", { state: { patientId, patient } })}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-sm md:text-base font-medium hover:opacity-90 transition shadow-sm"
-            >
-              تعديل المريض
-            </button>
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <button
+                onClick={() => navigate("/SelectClient", { 
+                  state: { 
+                    preselectedClient: { id: patientId, name: patient?.fullName } 
+                  } 
+                })}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:opacity-90 transition shadow-sm whitespace-nowrap"
+              >
+                ➕ إضافة جلسة
+              </button>
+              <button
+                onClick={() => navigate("/edit-patient", { state: { patientId, patient } })}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:opacity-90 transition shadow-sm whitespace-nowrap"
+              >
+                ✏️ تعديل المريض
+              </button>
+            </div>
           </div>
 
           {/* Patient Card */}
@@ -362,6 +374,12 @@ export default function PatientDetails() {
                 sessions={sessions}
                 getAreaNameInArabic={getAreaNameInArabic}
                 getSessionAreas={getSessionAreas}
+                patientId={patientId}
+                patient={patient}
+                navigate={navigate}
+                onSessionDeleted={() => {
+                  // سيتم إعادة تحميل الجلسات تلقائياً من useEffect
+                }}
               />
             )}
           </div>
@@ -373,9 +391,10 @@ export default function PatientDetails() {
 }
 
 /* ---------- MONTHLY CALENDAR COMPONENT ----------- */
-function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
+function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas, patientId, patient, navigate, onSessionDeleted }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedSession, setSelectedSession] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // تحويل الجلسات إلى خريطة بالتواريخ
   const sessionsByDate = {};
@@ -560,6 +579,13 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
             getAreaNameInArabic={getAreaNameInArabic}
             getSessionAreas={getSessionAreas}
             onClose={() => setSelectedSession(null)}
+            patientId={patientId}
+            patient={patient}
+            navigate={navigate}
+            onDeleted={() => {
+              setSelectedSession(null);
+              onSessionDeleted?.();
+            }}
           />
         )}
       </div>
@@ -642,6 +668,13 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
               getAreaNameInArabic={getAreaNameInArabic}
               getSessionAreas={getSessionAreas}
               onClose={() => setSelectedSession(null)}
+              patientId={patientId}
+              patient={patient}
+              navigate={navigate}
+              onDeleted={() => {
+                setSelectedSession(null);
+                onSessionDeleted?.();
+              }}
             />
           ) : (
             <div className="bg-white rounded-lg shadow-md border border-gray-100 p-4 text-center text-gray-400">
@@ -656,74 +689,164 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
 }
 
 /* ---------- SESSION CARD COMPONENT ----------- */
-function SessionCard({ session, getAreaNameInArabic, getSessionAreas, onClose }) {
+function SessionCard({ session, getAreaNameInArabic, getSessionAreas, onClose, patientId, patient, navigate, onDeleted }) {
   const areas = getSessionAreas(session);
   const sessionDate = session.date || (session.timestamp ? new Date(session.timestamp).toLocaleDateString("ar-SA") : "غير محدد");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!session.id || !patientId) {
+      alert("خطأ: لا يمكن تحديد الجلسة");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const sessionRef = ref(db, `sessions/${patientId}/${session.id}`);
+      await remove(sessionRef);
+      alert("✅ تم حذف الجلسة بنجاح");
+      setShowDeleteConfirm(false);
+      onDeleted?.();
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      alert("❌ حدث خطأ أثناء حذف الجلسة");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleEdit = () => {
+    // الانتقال إلى صفحة إضافة جلسة مع بيانات الجلسة للتعديل
+    navigate("/SelectClient", {
+      state: {
+        preselectedClient: { id: patientId, name: patient?.fullName },
+        editSession: session
+      }
+    });
+  };
 
   return (
-    <div 
-      className="bg-white rounded-lg md:rounded-xl shadow-md border border-purple-100 p-2.5 sm:p-3 md:p-3"
-      style={{
-        animation: 'fadeIn 0.3s ease-in-out'
-      }}
-    >
-      {/* العنوان مع زر الإغلاق */}
-      <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-200">
-        <h3 className="text-sm sm:text-base font-bold text-gray-800">معلومات الجلسة</h3>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-base sm:text-lg transition p-0.5 hover:bg-gray-100 rounded"
-          aria-label="إغلاق"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div className="space-y-2">
-        {/* التاريخ */}
-        <div>
-          <div className="text-gray-500 text-[10px] sm:text-xs mb-0.5 font-medium">📅 تاريخ الجلسة</div>
-          <div className="text-xs sm:text-sm md:text-base font-bold text-purple-700">{sessionDate}</div>
+    <>
+      <div 
+        className="bg-white rounded-lg md:rounded-xl shadow-md border border-purple-100 p-2.5 sm:p-3 md:p-3"
+        style={{
+          animation: 'fadeIn 0.3s ease-in-out'
+        }}
+      >
+        {/* العنوان مع زر الإغلاق */}
+        <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-200">
+          <h3 className="text-sm sm:text-base font-bold text-gray-800">معلومات الجلسة</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-base sm:text-lg transition p-0.5 hover:bg-gray-100 rounded"
+            aria-label="إغلاق"
+          >
+            ✕
+          </button>
         </div>
 
-        {/* اسم المعالج */}
-        {session.therapist && (
-          <div className="pt-1.5 border-t border-gray-100">
-            <div className="text-gray-500 text-[10px] sm:text-xs mb-0.5 font-medium">👨‍⚕️ المعالج</div>
-            <div className="text-xs sm:text-sm font-medium text-gray-800">{session.therapist}</div>
+        <div className="space-y-2">
+          {/* التاريخ */}
+          <div>
+            <div className="text-gray-500 text-[10px] sm:text-xs mb-0.5 font-medium">📅 تاريخ الجلسة</div>
+            <div className="text-xs sm:text-sm md:text-base font-bold text-purple-700">{sessionDate}</div>
           </div>
-        )}
 
-        {/* المناطق */}
-        <div className="pt-1.5 border-t border-gray-100">
-          <div className="text-gray-500 text-[10px] sm:text-xs mb-1 font-medium">المناطق المعالجة</div>
-          <div className="flex flex-wrap gap-1">
-            {areas.length > 0 ? (
-              areas.map((area, i) => (
-                <span
-                  key={i}
-                  className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-purple-100 text-purple-700 rounded-full text-[10px] sm:text-xs font-medium"
-                >
-                  {area}
-                </span>
-              ))
-            ) : (
-              <span className="text-gray-400 text-[10px] sm:text-xs">لا توجد مناطق محددة</span>
-            )}
-          </div>
-        </div>
+          {/* اسم المعالج */}
+          {session.therapist && (
+            <div className="pt-1.5 border-t border-gray-100">
+              <div className="text-gray-500 text-[10px] sm:text-xs mb-0.5 font-medium">👨‍⚕️ المعالج</div>
+              <div className="text-xs sm:text-sm font-medium text-gray-800">{session.therapist}</div>
+            </div>
+          )}
 
-        {/* الملاحظات */}
-        {session.notes && (
+          {/* المناطق */}
           <div className="pt-1.5 border-t border-gray-100">
-            <div className="text-gray-500 text-[10px] sm:text-xs mb-1 font-medium">📝 الملاحظات</div>
-            <div className="bg-gray-50 p-1.5 sm:p-2 rounded text-gray-700 text-[10px] sm:text-xs leading-relaxed">
-              {session.notes}
+            <div className="text-gray-500 text-[10px] sm:text-xs mb-1 font-medium">المناطق المعالجة</div>
+            <div className="flex flex-wrap gap-1">
+              {areas.length > 0 ? (
+                areas.map((area, i) => (
+                  <span
+                    key={i}
+                    className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-purple-100 text-purple-700 rounded-full text-[10px] sm:text-xs font-medium"
+                  >
+                    {area}
+                  </span>
+                ))
+              ) : (
+                <span className="text-gray-400 text-[10px] sm:text-xs">لا توجد مناطق محددة</span>
+              )}
             </div>
           </div>
-        )}
+
+          {/* الملاحظات */}
+          {session.notes && (
+            <div className="pt-1.5 border-t border-gray-100">
+              <div className="text-gray-500 text-[10px] sm:text-xs mb-1 font-medium">📝 الملاحظات</div>
+              <div className="bg-gray-50 p-1.5 sm:p-2 rounded text-gray-700 text-[10px] sm:text-xs leading-relaxed">
+                {session.notes}
+              </div>
+            </div>
+          )}
+
+          {/* أزرار التعديل والحذف */}
+          <div className="pt-2 border-t border-gray-200 flex gap-2">
+            <button
+              onClick={handleEdit}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[10px] sm:text-xs font-medium transition"
+            >
+              ✏️ تعديل
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[10px] sm:text-xs font-medium transition"
+              disabled={isDeleting}
+            >
+              🗑️ حذف
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Modal تأكيد الحذف */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowDeleteConfirm(false)}>
+          <div 
+            className="bg-white rounded-xl shadow-xl max-w-sm w-full p-4 md:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span className="text-red-600 text-2xl">⚠️</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">تأكيد الحذف</h3>
+              <p className="text-sm text-gray-600">
+                هل أنت متأكد من حذف هذه الجلسة؟
+                <br />
+                <span className="text-xs text-gray-500">لا يمكن التراجع عن هذا الإجراء</span>
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition"
+                disabled={isDeleting}
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition disabled:opacity-50"
+                disabled={isDeleting}
+              >
+                {isDeleting ? "جاري الحذف..." : "حذف"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
