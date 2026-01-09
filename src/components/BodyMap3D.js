@@ -1,7 +1,5 @@
 // BodyMap3D.js - الإصدار النهائي مع إمكانية اختيار التاريخ وإضافة الحزم
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
 import { ref, set, push, onValue, update } from "firebase/database"; // أضف update هنا
 import { db } from "../firebaseConfig";
 import "./BodyMap3D.css";
@@ -69,69 +67,23 @@ const areaMaps = {
   }
 };
 
-// أسماء المناطق المستخدمة في النموذج 3D (يجب أن تتطابق مع أسماء الـ meshes في model.glb)
-const modelPartNames = {
-  // منطقة البطن
-  'Abdomen': 'البطن',
-  'abdomen': 'البطن',
-  'stomach': 'البطن',
-  
-  // منطقة البيكيني
-  'BikiniArea': 'منطقة البيكيني',
-  'bikiniArea': 'منطقة البيكيني',
-  'bikini': 'منطقة البيكيني',
-  
-  // الفخذين
-  'Thighs': 'الفخذين',
-  'thighs': 'الفخذين',
-  'thigh': 'الفخذين',
-  
-  // الظهر
-  'Back': 'الظهر',
-  'back': 'الظهر',
-  
-  // الكوع
-  'Elbow': 'الكوع',
-  'elbow': 'الكوع',
-  
-  // الذراع
-  'Arm': 'الذراع',
-  'arm': 'الذراع',
-  'arms': 'الذراع',
-  
-  // الإبط
-  'Armpit': 'الإبط',
-  'armpit': 'الإبط',
-  'underarm': 'الإبط',
-  
-  // الرقبة
-  'Neck': 'الرقبة',
-  'neck': 'الرقبة',
-  
-  // الوجه
-  'Face': 'الوجه',
-  'face': 'الوجه',
-  
-  // اليد
-  'Hand': 'اليد',
-  'hand': 'اليد',
-  'hands': 'اليد',
-  
-  // القدمين
-  'Feet': 'القدمين',
-  'feet': 'القدمين',
-  'foot': 'القدمين',
-  
-  // الساق
-  'Shin': 'الساق',
-  'shin': 'الساق',
-  'legs': 'الساق',
-  
-  // الجسم كامل
-  'Fullbody': 'الصدر ',
-  'fullbody': ' الصدر',
-  'body': ' الصدر'
-};
+// قائمة جميع المناطق المتاحة
+const allBodyParts = [
+  'البطن',
+  'منطقة البيكيني',
+  'الفخذين',
+  'الظهر',
+  'الكوع',
+  'الذراع',
+  'الإبط',
+  'الرقبة',
+  'الوجه',
+  'اليد',
+  'القدمين',
+  'الساق',
+  'الصدر',
+  'الجسم كامل'
+];
 
 // دالة لتحويل أسماء المناطق في الجلسات إلى عربية
 const convertSessionPartsToArabic = (parts) => {
@@ -186,54 +138,29 @@ const convertSessionPartsToArabic = (parts) => {
   return [];
 };
 
-/* ----------------- WomanModel (3D) ----------------- */
-function WomanModel({ selectedParts = [], togglePart }) {
-  const { scene } = useGLTF("/model.glb");
-  
-  useEffect(() => {
-    if (!scene) return;
-    
-    scene.traverse((child) => {
-      if (child.isMesh) {
-        child.material = child.material.clone();
-        
-        // تحويل اسم المنطقة من الإنجليزية إلى العربية
-        const arabicName = modelPartNames[child.name] || child.name;
-        const isSelected = selectedParts.includes(arabicName);
-        const color = isSelected ? COLORS.primary : "#eeeeee";
-        
-        try {
-          child.material.color.set(color);
-          child.material.needsUpdate = true;
-        } catch (e) {
-          console.log("Error updating material for:", child.name, e);
-        }
-      }
-    });
-  }, [scene, selectedParts]);
-
-  const handleClick = useCallback(
-    (e) => {
-      e.stopPropagation();
-      const name = e.object?.name;
-      if (name) {
-        // تحويل اسم المنطقة إلى العربية قبل إرساله
-        const arabicName = modelPartNames[name] || name;
-        togglePart(arabicName);
-      }
-    },
-    [togglePart]
-  );
-
-  if (!scene) return null;
-  
+/* ----------------- BodyPartsSelector - قائمة اختيار المناطق ----------------- */
+function BodyPartsSelector({ selectedParts = [], togglePart }) {
   return (
-    <primitive
-      object={scene}
-      onClick={handleClick}
-      scale={0.35}
-      position={[0, -1.25, 0]}
-    />
+    <div className="body-parts-selector">
+      <div className="parts-grid">
+        {allBodyParts.map((part) => {
+          const isSelected = selectedParts.includes(part);
+          return (
+            <button
+              key={part}
+              type="button"
+              className={`part-button ${isSelected ? 'selected' : ''}`}
+              onClick={() => togglePart(part)}
+            >
+              <span className="part-icon">
+                {isSelected ? '✓' : '○'}
+              </span>
+              <span className="part-label">{part}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -1254,32 +1181,29 @@ const addSession = async (sessionData) => {
 
       <div className="main-grid">
         <div className="map-card">
-          <Canvas camera={{ position: [0, 1.8, 3.8], fov: 50 }}>
-            <ambientLight intensity={0.8} />
-            <directionalLight position={[3, 4, 3]} intensity={1.0} />
-            <WomanModel
-              selectedParts={selectedParts}
-              togglePart={togglePart}
-            />
-            <OrbitControls
-              enablePan={false}
-              minPolarAngle={Math.PI / 3.4}
-              maxPolarAngle={Math.PI / 1.8}
-            />
-          </Canvas>
-          <div className="map-footer">
-            <div className="legend">
-              <span className="dot selected" /> : محدد
-              <span className="dot normal" /> : غير محدد
-            </div>
-            <div className="selected-list">
-              {selectedParts.map((p) => (
-                <span key={p} className="tag">
-                  {p}
-                </span>
-              ))}
-            </div>
+          <div className="parts-selector-header">
+            <h3>اختر المناطق المراد علاجها</h3>
+            <p className="subtitle">اضغط على المنطقة لتحديدها أو إلغاء التحديد</p>
           </div>
+          <BodyPartsSelector
+            selectedParts={selectedParts}
+            togglePart={togglePart}
+          />
+          {selectedParts.length > 0 && (
+            <div className="selected-parts-summary">
+              <div className="summary-header">
+                <span className="summary-icon">✓</span>
+                <span>المناطق المحددة ({selectedParts.length})</span>
+              </div>
+              <div className="selected-list">
+                {selectedParts.map((p) => (
+                  <span key={p} className="tag selected-tag">
+                    {p}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="right-card">

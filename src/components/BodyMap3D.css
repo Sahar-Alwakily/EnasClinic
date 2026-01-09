@@ -656,22 +656,140 @@
 .map-card {
   border-radius: 14px;
   overflow: hidden;
-  height: 420px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.02),
-    rgba(255, 255, 255, 0.01)
-  );
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  box-shadow: 0 10px 40px rgba(124, 58, 237, 0.06);
+  min-height: 420px;
+  background: white;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.08);
   display: flex;
   flex-direction: column;
+  padding: 20px;
 }
 
-.map-card canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
+.parts-selector-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.parts-selector-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 8px 0;
+}
+
+.parts-selector-header .subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Body Parts Selector */
+.body-parts-selector {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.parts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.part-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.part-button:hover {
+  background: #f1f5f9;
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+}
+
+.part-button.selected {
+  background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);
+  border-color: var(--primary);
+  color: white;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+}
+
+.part-button.selected:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+}
+
+.part-icon {
+  font-size: 18px;
+  font-weight: bold;
+  min-width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.part-button .part-icon {
+  color: var(--muted);
+}
+
+.part-button.selected .part-icon {
+  color: white;
+}
+
+.part-label {
+  flex: 1;
+  text-align: right;
+}
+
+.selected-parts-summary {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid #f1f5f9;
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.summary-icon {
+  color: var(--success);
+  font-size: 18px;
+}
+
+.selected-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selected-tag {
+  display: inline-block;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.2);
 }
 
 .map-footer {
@@ -757,8 +875,12 @@
     order: 2;
   }
   .map-card {
-    height: 420px;
+    min-height: auto;
     order: 1;
+  }
+  .parts-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
   }
 }
 
