@@ -254,6 +254,19 @@ export default function Dashboard({ user }) {
                     <div className="text-xs opacity-90">إضافة عميل جديد للنظام</div>
                   </div>
                 </button>
+
+                <button
+                  onClick={() => navigate("/customers")}
+                  className="w-full flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 group"
+                >
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="text-xs sm:text-sm">👥</span>
+                  </div>
+                  <div className="text-right flex-1">
+                    <div className="font-bold text-xs sm:text-sm">العملاء</div>
+                    <div className="text-xs opacity-90">عرض جميع العملاء</div>
+                  </div>
+                </button>
               </div>
             </div>
 
