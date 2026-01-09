@@ -334,14 +334,11 @@ export default function PatientDetails() {
                 <p className="text-gray-500">لا توجد جلسات مسجلة بعد</p>
               </div>
             ) : (
-              sessions.map((session, idx) => (
-                <SessionCard 
-                  key={session.id || idx} 
-                  session={session} 
-                  getAreaNameInArabic={getAreaNameInArabic}
-                  getSessionAreas={getSessionAreas}
-                />
-              ))
+              <MonthlyCalendar 
+                sessions={sessions}
+                getAreaNameInArabic={getAreaNameInArabic}
+                getSessionAreas={getSessionAreas}
+              />
             )}
           </div>
         )}
@@ -350,143 +347,245 @@ export default function PatientDetails() {
   );
 }
 
-/* ---------- SESSION CARD COMPONENT ----------- */
-function SessionCard({ session, getAreaNameInArabic, getSessionAreas }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+/* ---------- MONTHLY CALENDAR COMPONENT ----------- */
+function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
-  const areas = getSessionAreas(session);
-  const totalAmount = parseInt(session.amount || session.discountedPrice || 0);
-  const paidAmount = parseInt(session.paidAmount || 0);
-  const remainingAmount = parseInt(session.remainingAmount || totalAmount - paidAmount);
-  const paymentStatus = session.paymentStatus || (remainingAmount === 0 ? "كامل" : "جزئي");
+  // تحويل الجلسات إلى خريطة بالتواريخ
+  const sessionsByDate = {};
+  sessions.forEach(session => {
+    let dateStr = session.gregorianDate || session.date || (session.timestamp ? new Date(session.timestamp).toISOString().split('T')[0] : null);
+    
+    if (!dateStr) return;
+    
+    // تحويل من DD/MM/YYYY إلى YYYY-MM-DD إذا لزم الأمر
+    let formattedDate = dateStr;
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        formattedDate = `${year}-${month}-${day}`;
+      }
+    } else if (dateStr.includes('-') && dateStr.length === 10) {
+      // إذا كان بصيغة YYYY-MM-DD بالفعل
+      formattedDate = dateStr;
+    } else if (session.timestamp) {
+      // محاولة استخدام timestamp
+      try {
+        const date = new Date(session.timestamp);
+        if (!isNaN(date.getTime())) {
+          formattedDate = date.toISOString().split('T')[0];
+        }
+      } catch (e) {
+        console.error('Error parsing timestamp:', e);
+        return;
+      }
+    }
+    
+    if (formattedDate && formattedDate.length === 10) {
+      if (!sessionsByDate[formattedDate]) {
+        sessionsByDate[formattedDate] = [];
+      }
+      sessionsByDate[formattedDate].push(session);
+    }
+  });
+
+  // الحصول على معلومات الشهر الحالي
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
   
-  // التاريخ
-  const sessionDate = session.date || new Date(session.timestamp).toLocaleDateString("ar-SA");
-  const gregorianDate = session.gregorianDate || new Date(session.timestamp).toISOString().split('T')[0];
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDayOfWeek = firstDay.getDay(); // 0 = الأحد, 6 = السبت
+
+  // أسماء الأيام بالعربية
+  const weekDays = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
+  const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+
+  // تغيير الشهر
+  const changeMonth = (direction) => {
+    setCurrentDate(new Date(year, month + direction, 1));
+  };
+
+  // التحقق إذا كان التاريخ يحتوي على جلسة
+  const hasSession = (day) => {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return sessionsByDate[dateStr] && sessionsByDate[dateStr].length > 0;
+  };
+
+  // الحصول على جلسات يوم معين
+  const getDaySessions = (day) => {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return sessionsByDate[dateStr] || [];
+  };
+
+  // فتح modal لعرض معلومات الجلسة
+  const handleDateClick = (day) => {
+    const daySessions = getDaySessions(day);
+    if (daySessions.length > 0) {
+      // إذا كان هناك عدة جلسات في نفس اليوم، نعرض آخر واحدة
+      setSelectedSession(daySessions[daySessions.length - 1]);
+      setShowModal(true);
+    }
+  };
+
+  // إنشاء مصفوفة الأيام
+  const days = [];
+  // إضافة الأيام الفارغة في البداية
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    days.push(null);
+  }
+  // إضافة أيام الشهر
+  for (let day = 1; day <= daysInMonth; day++) {
+    days.push(day);
+  }
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-purple-100 overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-100">
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <span className="text-purple-700 font-bold text-lg">{sessionDate}</span>
-            <span className="text-gray-400 text-sm mr-2">({gregorianDate})</span>
-          </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            paymentStatus === "كامل" 
-              ? "bg-green-100 text-green-700 border border-green-300"
-              : "bg-orange-100 text-orange-700 border border-orange-300"
-          }`}>
-            {paymentStatus}
-          </span>
+    <>
+      <div className="bg-white rounded-2xl shadow-lg border border-purple-100 p-4">
+        {/* رأس التقويم */}
+        <div className="flex justify-between items-center mb-4">
+          <button
+            onClick={() => changeMonth(-1)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition"
+          >
+            ←
+          </button>
+          <h3 className="text-lg font-bold text-gray-800">
+            {months[month]} {year}
+          </h3>
+          <button
+            onClick={() => changeMonth(1)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition"
+          >
+            →
+          </button>
         </div>
 
-        {/* المعالج */}
-        {session.therapist && (
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-blue-600">👨‍⚕️</span>
-            <span className="text-gray-700 font-medium">المعالج: {session.therapist}</span>
-          </div>
-        )}
-
-        {/* المناطق */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {areas.map((area, i) => (
-            <span
-              key={i}
-              className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium"
-            >
-              {getAreaNameInArabic(area)}
-            </span>
+        {/* أيام الأسبوع */}
+        <div className="grid grid-cols-7 gap-2 mb-2">
+          {weekDays.map((day, index) => (
+            <div key={index} className="text-center font-semibold text-gray-600 text-sm py-2">
+              {day}
+            </div>
           ))}
         </div>
 
-        {/* المبالغ المالية */}
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="bg-gray-50 p-2 rounded-lg">
-            <div className="text-gray-500">المبلغ الكلي</div>
-            <div className="font-bold text-gray-800">{totalAmount} ₪</div>
-          </div>
-          <div className="bg-gray-50 p-2 rounded-lg">
-            <div className="text-gray-500">المدفوع</div>
-            <div className="font-bold text-green-600">{paidAmount} ₪</div>
-          </div>
-          <div className="bg-gray-50 p-2 rounded-lg">
-            <div className="text-gray-500">المتبقي</div>
-            <div className={`font-bold ${remainingAmount > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-              {remainingAmount} ₪
+        {/* الأيام */}
+        <div className="grid grid-cols-7 gap-2">
+          {days.map((day, index) => (
+            <div
+              key={index}
+              className={`aspect-square flex items-center justify-center rounded-lg cursor-pointer transition-all ${
+                day === null
+                  ? ''
+                  : hasSession(day)
+                  ? 'bg-red-500 text-white font-bold hover:bg-red-600'
+                  : 'bg-gray-50 hover:bg-gray-100'
+              }`}
+              onClick={() => day && handleDateClick(day)}
+            >
+              {day}
             </div>
-          </div>
-          <div className="bg-gray-50 p-2 rounded-lg">
-            <div className="text-gray-500">طريقة الدفع</div>
-            <div className="font-bold text-blue-600">{session.paymentType || "نقدي"}</div>
+          ))}
+        </div>
+
+        {/* مفتاح الألوان */}
+        <div className="mt-4 flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-500 rounded"></div>
+            <span className="text-gray-600">جلسة موجودة</span>
           </div>
         </div>
       </div>
 
-      {/* التفاصيل الإضافية */}
-      {(session.notes || session.appliedDiscounts) && (
-        <>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full p-3 text-center text-purple-600 font-medium border-t border-gray-100 hover:bg-purple-50 transition"
-          >
-            {isExpanded ? "إخفاء التفاصيل" : "عرض التفاصيل"} {isExpanded ? "▲" : "▼"}
-          </button>
-
-          {isExpanded && (
-            <div className="p-4 bg-gray-50 border-t border-gray-100">
-              {/* الملاحظات */}
-              {session.notes && (
-                <div className="mb-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-gray-600">📝</span>
-                    <span className="font-medium text-gray-700">ملاحظات:</span>
-                  </div>
-                  <p className="text-gray-600 text-sm bg-white p-3 rounded-lg border">
-                    {session.notes}
-                  </p>
-                </div>
-              )}
-
-              {/* التخفيضات */}
-              {session.appliedDiscounts && session.appliedDiscounts.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-green-600">🎁</span>
-                    <span className="font-medium text-gray-700">التخفيضات المطبقة:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {session.appliedDiscounts.map((discount, i) => (
-                      <span
-                        key={i}
-                        className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs"
-                      >
-                        {discount}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* السعر الأصلي بعد الخصم */}
-              {session.originalPrice && session.discountedPrice && (
-                <div className="mt-3 p-3 bg-white rounded-lg border text-sm">
-                  <div className="flex justify-between text-gray-600">
-                    <span>السعر الأصلي:</span>
-                    <span>{session.originalPrice} ₪</span>
-                  </div>
-                  <div className="flex justify-between text-green-600 font-bold mt-1">
-                    <span>السعر بعد الخصم:</span>
-                    <span>{session.discountedPrice} ₪</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </>
+      {/* Modal لعرض معلومات الجلسة */}
+      {showModal && selectedSession && (
+        <SessionModal
+          session={selectedSession}
+          getAreaNameInArabic={getAreaNameInArabic}
+          getSessionAreas={getSessionAreas}
+          onClose={() => setShowModal(false)}
+        />
       )}
+    </>
+  );
+}
+
+/* ---------- SESSION MODAL COMPONENT ----------- */
+function SessionModal({ session, getAreaNameInArabic, getSessionAreas, onClose }) {
+  const areas = getSessionAreas(session);
+  const sessionDate = session.date || new Date(session.timestamp).toLocaleDateString("ar-SA");
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div 
+        className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* العنوان */}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-gray-800">معلومات الجلسة</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* التاريخ */}
+        <div className="mb-4 pb-4 border-b">
+          <div className="text-gray-600 text-sm mb-1">تاريخ الجلسة</div>
+          <div className="text-lg font-bold text-purple-700">{sessionDate}</div>
+        </div>
+
+        {/* اسم المعالج */}
+        {session.therapist && (
+          <div className="mb-4 pb-4 border-b">
+            <div className="text-gray-600 text-sm mb-2">👨‍⚕️ المعالج</div>
+            <div className="text-lg font-medium text-gray-800">{session.therapist}</div>
+          </div>
+        )}
+
+        {/* المناطق */}
+        <div className="mb-4 pb-4 border-b">
+          <div className="text-gray-600 text-sm mb-2">المناطق المعالجة</div>
+          <div className="flex flex-wrap gap-2">
+            {areas.map((area, i) => (
+              <span
+                key={i}
+                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium"
+              >
+                {area}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* الملاحظات */}
+        {session.notes && (
+          <div className="mb-4">
+            <div className="text-gray-600 text-sm mb-2">📝 الملاحظات</div>
+            <div className="bg-gray-50 p-3 rounded-lg text-gray-700 text-sm">
+              {session.notes}
+            </div>
+          </div>
+        )}
+
+        {/* زر الإغلاق */}
+        <button
+          onClick={onClose}
+          className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition mt-4"
+        >
+          إغلاق
+        </button>
+      </div>
     </div>
   );
 }
