@@ -351,7 +351,7 @@ export default function PatientDetails() {
 
         {/* SESSIONS */}
         {activeSection === "sessions" && (
-          <div className="space-y-3 md:space-y-4 lg:space-y-6">
+          <div className="space-y-3">
             {sessions.length === 0 ? (
               <div className="text-center py-8 md:py-12">
                 <div className="text-4xl md:text-5xl mb-2 md:mb-3">📭</div>
@@ -485,82 +485,173 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 md:border-purple-100 p-3 sm:p-4 md:p-4 max-w-md md:max-w-lg lg:max-w-xl mx-auto">
-        {/* رأس التقويم */}
-        <div className="flex justify-between items-center mb-2">
-          <button
-            onClick={() => changeMonth(-1)}
-            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition text-sm sm:text-base md:text-lg flex-shrink-0"
-            aria-label="الشهر السابق"
-          >
-            ←
-          </button>
-          <h3 className="text-xs sm:text-sm md:text-base font-bold text-gray-800 px-2">
-            {months[month]} {year}
-          </h3>
-          <button
-            onClick={() => changeMonth(1)}
-            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition text-sm sm:text-base md:text-lg flex-shrink-0"
-            aria-label="الشهر التالي"
-          >
-            →
-          </button>
-        </div>
-
-        {/* أيام الأسبوع */}
-        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1.5">
-          {weekDays.map((day, index) => (
-            <div key={index} className="text-center font-semibold text-gray-600 text-[10px] sm:text-xs py-0.5 sm:py-1">
-              {day}
-            </div>
-          ))}
-        </div>
-
-        {/* الأيام */}
-        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
-          {days.map((day, index) => (
-            <div
-              key={index}
-              className={`aspect-square flex items-center justify-center rounded cursor-pointer transition-all text-[10px] sm:text-xs font-medium min-h-[28px] sm:min-h-[32px] md:min-h-[36px] ${
-                day === null
-                  ? ''
-                  : isSelected(day)
-                  ? 'bg-purple-600 text-white font-bold ring-1 ring-purple-400 shadow-sm'
-                  : hasSession(day)
-                  ? 'bg-red-500 text-white font-bold hover:bg-red-600 active:scale-95'
-                  : 'bg-gray-50 hover:bg-gray-100 active:scale-95 border border-gray-200'
-              }`}
-              onClick={() => day && handleDateClick(day)}
+    <>
+      {/* Layout للموبايل - عمودي */}
+      <div className="space-y-3 md:hidden">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 max-w-md mx-auto">
+          {/* رأس التقويم */}
+          <div className="flex justify-between items-center mb-2">
+            <button
+              onClick={() => changeMonth(-1)}
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition text-sm sm:text-base flex-shrink-0"
+              aria-label="الشهر السابق"
             >
-              {day}
+              ←
+            </button>
+            <h3 className="text-xs sm:text-sm font-bold text-gray-800 px-2">
+              {months[month]} {year}
+            </h3>
+            <button
+              onClick={() => changeMonth(1)}
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition text-sm sm:text-base flex-shrink-0"
+              aria-label="الشهر التالي"
+            >
+              →
+            </button>
+          </div>
+
+          {/* أيام الأسبوع */}
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1.5">
+            {weekDays.map((day, index) => (
+              <div key={index} className="text-center font-semibold text-gray-600 text-[10px] sm:text-xs py-0.5 sm:py-1">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* الأيام */}
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+            {days.map((day, index) => (
+              <div
+                key={index}
+                className={`aspect-square flex items-center justify-center rounded cursor-pointer transition-all text-[10px] sm:text-xs font-medium min-h-[28px] sm:min-h-[32px] ${
+                  day === null
+                    ? ''
+                    : isSelected(day)
+                    ? 'bg-purple-600 text-white font-bold ring-1 ring-purple-400 shadow-sm'
+                    : hasSession(day)
+                    ? 'bg-red-500 text-white font-bold hover:bg-red-600 active:scale-95'
+                    : 'bg-gray-50 hover:bg-gray-100 active:scale-95 border border-gray-200'
+                }`}
+                onClick={() => day && handleDateClick(day)}
+              >
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* مفتاح الألوان */}
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded"></div>
+              <span className="text-gray-600">جلسة موجودة</span>
             </div>
-          ))}
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-purple-600 rounded ring-1 ring-purple-400"></div>
+              <span className="text-gray-600">محدد</span>
+            </div>
+          </div>
         </div>
 
-        {/* مفتاح الألوان */}
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded"></div>
-            <span className="text-gray-600">جلسة موجودة</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-purple-600 rounded ring-1 ring-purple-400"></div>
-            <span className="text-gray-600">محدد</span>
-          </div>
-        </div>
+        {/* بطاقة عرض معلومات الجلسة - للموبايل */}
+        {selectedSession && (
+          <SessionCard
+            session={selectedSession}
+            getAreaNameInArabic={getAreaNameInArabic}
+            getSessionAreas={getSessionAreas}
+            onClose={() => setSelectedSession(null)}
+          />
+        )}
       </div>
 
-      {/* بطاقة عرض معلومات الجلسة */}
-      {selectedSession && (
-        <SessionCard
-          session={selectedSession}
-          getAreaNameInArabic={getAreaNameInArabic}
-          getSessionAreas={getSessionAreas}
-          onClose={() => setSelectedSession(null)}
-        />
-      )}
-    </div>
+      {/* Layout للابتوب - Grid مع تقويم صغير */}
+      <div className="hidden md:grid md:grid-cols-12 md:gap-6">
+        {/* التقويم الصغير - 3 مرات أصغر */}
+        <div className="md:col-span-4 lg:col-span-3">
+          <div className="bg-white rounded-xl shadow-md border border-purple-100 p-2.5 sticky top-4">
+            {/* رأس التقويم */}
+            <div className="flex justify-between items-center mb-1.5">
+              <button
+                onClick={() => changeMonth(-1)}
+                className="p-1 hover:bg-gray-100 rounded transition text-xs flex-shrink-0"
+                aria-label="الشهر السابق"
+              >
+                ←
+              </button>
+              <h3 className="text-[10px] font-bold text-gray-800 px-1">
+                {months[month]} {year}
+              </h3>
+              <button
+                onClick={() => changeMonth(1)}
+                className="p-1 hover:bg-gray-100 rounded transition text-xs flex-shrink-0"
+                aria-label="الشهر التالي"
+              >
+                →
+              </button>
+            </div>
+
+            {/* أيام الأسبوع */}
+            <div className="grid grid-cols-7 gap-[2px] mb-1">
+              {weekDays.map((day, index) => (
+                <div key={index} className="text-center font-semibold text-gray-600 text-[8px] py-0.5">
+                  {day.slice(0, 3)}
+                </div>
+              ))}
+            </div>
+
+            {/* الأيام */}
+            <div className="grid grid-cols-7 gap-[2px]">
+              {days.map((day, index) => (
+                <div
+                  key={index}
+                  className={`aspect-square flex items-center justify-center rounded cursor-pointer transition-all text-[9px] font-medium min-h-[20px] max-h-[24px] ${
+                    day === null
+                      ? ''
+                      : isSelected(day)
+                      ? 'bg-purple-600 text-white font-bold ring-1 ring-purple-400'
+                      : hasSession(day)
+                      ? 'bg-red-500 text-white font-bold hover:bg-red-600'
+                      : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                  }`}
+                  onClick={() => day && handleDateClick(day)}
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* مفتاح الألوان */}
+            <div className="mt-1.5 flex flex-col gap-1.5 text-[9px]">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-red-500 rounded"></div>
+                <span className="text-gray-600">جلسة</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-purple-600 rounded ring-1 ring-purple-400"></div>
+                <span className="text-gray-600">محدد</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* بطاقة معلومات الجلسة - للابتوب */}
+        <div className="md:col-span-8 lg:col-span-9">
+          {selectedSession ? (
+            <SessionCard
+              session={selectedSession}
+              getAreaNameInArabic={getAreaNameInArabic}
+              getSessionAreas={getSessionAreas}
+              onClose={() => setSelectedSession(null)}
+            />
+          ) : (
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center text-gray-400">
+              <div className="text-3xl mb-2">📅</div>
+              <p className="text-sm">اختر تاريخاً لعرض معلومات الجلسة</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
