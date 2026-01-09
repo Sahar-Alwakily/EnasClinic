@@ -110,73 +110,79 @@ export default function PatientDetails() {
             transform: translateY(0);
           }
         }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
       `}</style>
-      <div className="min-h-screen bg-gray-100 pb-20">
+      <div className="min-h-screen bg-gray-50 md:bg-gray-100 pb-6 md:pb-20">
         {/* HEADER */}
-        <div className="bg-white shadow-md rounded-b-3xl pb-6">
-        <div className="p-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-gray-600 hover:text-gray-900 text-2xl"
-          >
-            ←
-          </button>
-          <div className="p-4 flex items-center justify-between">
-  
-  {/* أضف زر التعديل هنا */}
-  <button
-    onClick={() => navigate("/edit-patient", { state: { patientId, patient } })}
-    className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition"
-  >
-    تعديل المريض
-  </button>
-</div>
-        </div>
+        <div className="bg-white shadow-sm md:shadow-md rounded-b-2xl md:rounded-b-3xl pb-4 md:pb-6">
+          <div className="p-3 md:p-4 flex items-center justify-between">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-gray-600 hover:text-gray-900 text-xl md:text-2xl p-2 hover:bg-gray-100 rounded-lg transition"
+              aria-label="رجوع"
+            >
+              ←
+            </button>
+            <button
+              onClick={() => navigate("/edit-patient", { state: { patientId, patient } })}
+              className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-sm md:text-base font-medium hover:opacity-90 transition shadow-sm"
+            >
+              تعديل المريض
+            </button>
+          </div>
 
-        {/* Patient Card */}
-        <div className="px-4 mt-3">
-          <div className="flex items-center gap-4 bg-gradient-to-r from-purple-600/90 to-blue-600/90 p-4 rounded-2xl shadow-xl text-white">
-            <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center font-bold text-xl">
-              {patient.fullName?.slice(0, 2) || "??"}
+          {/* Patient Card */}
+          <div className="px-3 md:px-4 mt-2 md:mt-3">
+            <div className="flex items-center gap-3 md:gap-4 bg-gradient-to-r from-purple-600/90 to-blue-600/90 p-3 md:p-4 lg:p-5 rounded-xl md:rounded-2xl shadow-lg md:shadow-xl text-white">
+              <div className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 bg-white/20 backdrop-blur-md rounded-lg md:rounded-xl flex items-center justify-center font-bold text-lg md:text-xl lg:text-2xl flex-shrink-0">
+                {patient.fullName?.slice(0, 2) || "??"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="font-bold text-base md:text-xl lg:text-2xl truncate">{patient.fullName}</h1>
+                <p className="text-xs md:text-sm lg:text-base opacity-90 mt-1 break-words">
+                  <span className="block sm:inline">الهوية: {patient.idNumber}</span>
+                  <span className="hidden sm:inline"> • </span>
+                  <span className="block sm:inline">الهاتف: {patient.phone || "غير محدد"}</span>
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-xl">{patient.fullName}</h1>
-              <p className="text-sm opacity-80">
-                الهوية: {patient.idNumber} • الهاتف: {patient.phone}
-              </p>
+          </div>
+
+          {/* Tabs */}
+          <div className="mt-3 md:mt-4 px-3 md:px-4">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {[
+                { id: "info", label: "البيانات" },
+                { id: "health", label: "الصحة" },
+                { id: "sessions", label: "الجلسات" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSection(tab.id)}
+                  className={`px-4 md:px-5 py-2 md:py-2.5 rounded-lg md:rounded-xl font-medium text-xs md:text-sm transition whitespace-nowrap flex-shrink-0 ${
+                    activeSection === tab.id
+                      ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
+                      : "bg-gray-100 md:bg-gray-200 text-gray-700 hover:bg-gray-200 md:hover:bg-gray-300"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
-
-        {/* Tabs */}
-        <div className="mt-4 px-4">
-          <div className="flex gap-2 overflow-x-auto">
-            {[
-              { id: "info", label: "البيانات" },
-              { id: "health", label: "الصحة" },
-              { id: "sessions", label: "الجلسات" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSection(tab.id)}
-                className={`px-4 py-2 rounded-xl font-medium text-sm transition ${
-                  activeSection === tab.id
-                    ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
-                    : "bg-gray-200 text-gray-700"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* CONTENT */}
-      <div className="p-4">
+      <div className="p-3 md:p-4 lg:p-6 max-w-7xl mx-auto">
         {/* INFO */}
         {activeSection === "info" && (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6">
             <GlassCard title="المعلومات الشخصية">
               <Info label="الاسم الكامل" value={patient.fullName || "غير محدد"} />
               <Info label="رقم الهوية" value={patient.idNumber || "غير محدد"} />
@@ -198,7 +204,7 @@ export default function PatientDetails() {
 
         {/* HEALTH */}
         {activeSection === "health" && (
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4 lg:space-y-6">
             {/* الصحة العامة */}
             <GlassCard title="الصحة العامة">
               <Info label="الحالة الصحية" value={patient.healthStatus || "غير محددة"} />
@@ -219,7 +225,7 @@ export default function PatientDetails() {
             {/* الأمراض المزمنة */}
             <GlassCard title="الأمراض المزمنة">
               {patient.chronicConditions ? (
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
                   {Object.entries({
                     diabetes: "السكري",
                     bloodPressure: "ضغط الدم",
@@ -244,41 +250,42 @@ export default function PatientDetails() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-2">لا توجد بيانات للأمراض المزمنة</p>
+                <p className="text-gray-500 text-center py-3 md:py-4 text-sm md:text-base">لا توجد بيانات للأمراض المزمنة</p>
               )}
             </GlassCard>
 
-            {/* الأمراض الجلدية */}
-            <GlassCard title="الأمراض الجلدية">
-              <Info label="أمراض جلدية" value={renderYesNo(patient.skinDiseases)} />
-              <Info 
-                label="تفاصيل الجلد" 
-                value={patient.skinDetails || "لا توجد تفاصيل"} 
-              />
-              <Info 
-                label="العلاجات السابقة" 
-                value={patient.previousTreatments || "لا توجد علاجات سابقة"} 
-              />
-            </GlassCard>
-
-            {/* الأدوية اليومية */}
-            <GlassCard title="الأدوية اليومية">
-              <Info 
-                label="أدوية يومية" 
-                value={renderYesNo(patient.dailyMedications?.medications)} 
-              />
-              {patient.dailyMedications?.medications && patient.dailyMedications?.type && (
+            {/* الأمراض الجلدية والأدوية */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 lg:gap-6">
+              <GlassCard title="الأمراض الجلدية">
+                <Info label="أمراض جلدية" value={renderYesNo(patient.skinDiseases)} />
                 <Info 
-                  label="نوع الأدوية" 
-                  value={patient.dailyMedications.type} 
+                  label="تفاصيل الجلد" 
+                  value={patient.skinDetails || "لا توجد تفاصيل"} 
                 />
-              )}
-            </GlassCard>
+                <Info 
+                  label="العلاجات السابقة" 
+                  value={patient.previousTreatments || "لا توجد علاجات سابقة"} 
+                />
+              </GlassCard>
+
+              <GlassCard title="الأدوية اليومية">
+                <Info 
+                  label="أدوية يومية" 
+                  value={renderYesNo(patient.dailyMedications?.medications)} 
+                />
+                {patient.dailyMedications?.medications && patient.dailyMedications?.type && (
+                  <Info 
+                    label="نوع الأدوية" 
+                    value={patient.dailyMedications.type} 
+                  />
+                )}
+              </GlassCard>
+            </div>
 
             {/* الأدوية الإضافية */}
             {(patient.dailyMedicationsExtra && Object.keys(patient.dailyMedicationsExtra).length > 0) ? (
               <GlassCard title="الأدوية الإضافية">
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                   {Object.entries({
                     roaccutane: "روأكيوتان",
                     contraceptive: "مانع الحمل",
@@ -296,10 +303,12 @@ export default function PatientDetails() {
                     )
                   ))}
                   {patient.dailyMedicationsExtra.other && (
-                    <Info 
-                      label="أدوية أخرى" 
-                      value={patient.dailyMedicationsExtra.other} 
-                    />
+                    <div className="md:col-span-2">
+                      <Info 
+                        label="أدوية أخرى" 
+                        value={patient.dailyMedicationsExtra.other} 
+                      />
+                    </div>
                   )}
                 </div>
               </GlassCard>
@@ -308,7 +317,7 @@ export default function PatientDetails() {
             {/* منتجات العناية */}
             {patient.cosmetics ? (
               <GlassCard title="منتجات العناية المستخدمة">
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
                   {Object.entries({
                     moisturizer: "مرطب",
                     sunscreen: "واقي شمس",
@@ -327,10 +336,12 @@ export default function PatientDetails() {
                     )
                   ))}
                   {patient.cosmetics.otherMedications && (
-                    <Info 
-                      label="أدوية عناية أخرى" 
-                      value={patient.cosmetics.otherMedications} 
-                    />
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <Info 
+                        label="أدوية عناية أخرى" 
+                        value={patient.cosmetics.otherMedications} 
+                      />
+                    </div>
                   )}
                 </div>
               </GlassCard>
@@ -340,11 +351,11 @@ export default function PatientDetails() {
 
         {/* SESSIONS */}
         {activeSection === "sessions" && (
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4 lg:space-y-6">
             {sessions.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-4xl mb-2">📭</div>
-                <p className="text-gray-500">لا توجد جلسات مسجلة بعد</p>
+              <div className="text-center py-8 md:py-12">
+                <div className="text-4xl md:text-5xl mb-2 md:mb-3">📭</div>
+                <p className="text-gray-500 text-sm md:text-base">لا توجد جلسات مسجلة بعد</p>
               </div>
             ) : (
               <MonthlyCalendar 
@@ -474,49 +485,51 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-2xl shadow-lg border border-purple-100 p-3 sm:p-4 md:p-6">
+    <div className="space-y-3 md:space-y-4 lg:space-y-6">
+      <div className="bg-white rounded-xl md:rounded-2xl shadow-md md:shadow-lg border border-gray-100 md:border-purple-100 p-3 sm:p-4 md:p-5 lg:p-6 max-w-4xl mx-auto">
         {/* رأس التقويم */}
-        <div className="flex justify-between items-center mb-3 sm:mb-4">
+        <div className="flex justify-between items-center mb-3 sm:mb-4 md:mb-5">
           <button
             onClick={() => changeMonth(-1)}
-            className="p-2 sm:p-3 hover:bg-gray-100 rounded-lg transition text-lg sm:text-xl"
+            className="p-2 sm:p-2.5 md:p-3 hover:bg-gray-100 rounded-lg transition text-lg sm:text-xl md:text-2xl flex-shrink-0"
+            aria-label="الشهر السابق"
           >
             ←
           </button>
-          <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800">
+          <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-800 px-2 sm:px-4">
             {months[month]} {year}
           </h3>
           <button
             onClick={() => changeMonth(1)}
-            className="p-2 sm:p-3 hover:bg-gray-100 rounded-lg transition text-lg sm:text-xl"
+            className="p-2 sm:p-2.5 md:p-3 hover:bg-gray-100 rounded-lg transition text-lg sm:text-xl md:text-2xl flex-shrink-0"
+            aria-label="الشهر التالي"
           >
             →
           </button>
         </div>
 
         {/* أيام الأسبوع */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 md:gap-3 mb-2 md:mb-3">
           {weekDays.map((day, index) => (
-            <div key={index} className="text-center font-semibold text-gray-600 text-xs sm:text-sm py-1 sm:py-2">
+            <div key={index} className="text-center font-semibold text-gray-600 text-xs sm:text-sm md:text-base py-1 sm:py-2 md:py-3">
               {day}
             </div>
           ))}
         </div>
 
         {/* الأيام */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 md:gap-3">
           {days.map((day, index) => (
             <div
               key={index}
-              className={`aspect-square flex items-center justify-center rounded-lg cursor-pointer transition-all text-xs sm:text-sm md:text-base ${
+              className={`aspect-square flex items-center justify-center rounded-lg md:rounded-xl cursor-pointer transition-all text-xs sm:text-sm md:text-base lg:text-lg font-medium min-h-[36px] sm:min-h-[44px] md:min-h-[52px] ${
                 day === null
                   ? ''
                   : isSelected(day)
-                  ? 'bg-purple-600 text-white font-bold ring-2 ring-purple-400 ring-offset-2'
+                  ? 'bg-purple-600 text-white font-bold ring-2 ring-purple-400 ring-offset-1 md:ring-offset-2 shadow-md'
                   : hasSession(day)
-                  ? 'bg-red-500 text-white font-bold hover:bg-red-600 active:scale-95'
-                  : 'bg-gray-50 hover:bg-gray-100 active:scale-95'
+                  ? 'bg-red-500 text-white font-bold hover:bg-red-600 active:scale-95 shadow-sm'
+                  : 'bg-gray-50 hover:bg-gray-100 active:scale-95 border border-gray-200'
               }`}
               onClick={() => day && handleDateClick(day)}
             >
@@ -526,14 +539,14 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
         </div>
 
         {/* مفتاح الألوان */}
-        <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+        <div className="mt-3 sm:mt-4 md:mt-5 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm md:text-base">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
-            <span className="text-gray-600">جلسة موجودة</span>
+            <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 bg-red-500 rounded shadow-sm"></div>
+            <span className="text-gray-600 font-medium">جلسة موجودة</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-purple-600 rounded ring-2 ring-purple-400"></div>
-            <span className="text-gray-600">محدد</span>
+            <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 bg-purple-600 rounded ring-2 ring-purple-400 shadow-sm"></div>
+            <span className="text-gray-600 font-medium">محدد</span>
           </div>
         </div>
       </div>
@@ -627,18 +640,18 @@ function SessionCard({ session, getAreaNameInArabic, getSessionAreas, onClose })
 
 function GlassCard({ title, children }) {
   return (
-    <div className="bg-white/70 backdrop-blur-lg shadow-lg rounded-2xl border border-white/40 p-4">
-      <h3 className="text-purple-700 font-bold mb-3">{title}</h3>
-      <div className="space-y-2">{children}</div>
+    <div className="bg-white backdrop-blur-lg shadow-md md:shadow-lg rounded-xl md:rounded-2xl border border-gray-100 md:border-white/40 p-3 md:p-4 lg:p-6">
+      <h3 className="text-purple-700 font-bold mb-3 md:mb-4 text-base md:text-lg lg:text-xl">{title}</h3>
+      <div className="space-y-2 md:space-y-3">{children}</div>
     </div>
   );
 }
 
 function Info({ label, value }) {
   return (
-    <div className="flex justify-between bg-gray-50 rounded-lg p-2">
-      <span className="text-gray-500 text-sm">{label}</span>
-      <span className="font-medium text-gray-800 text-sm">{value}</span>
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-50 rounded-lg p-2.5 md:p-3 gap-1 sm:gap-2">
+      <span className="text-gray-500 text-xs md:text-sm font-medium">{label}</span>
+      <span className="font-medium text-gray-800 text-xs md:text-sm text-right sm:text-left break-words sm:break-normal">{value}</span>
     </div>
   );
 }
