@@ -426,7 +426,7 @@ function SessionCard({ session, getAreaNameInArabic, getSessionAreas }) {
       </div>
 
       {/* التفاصيل الإضافية */}
-      {session.notes && (
+      {(session.notes || session.appliedDiscounts) && (
         <>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
@@ -447,6 +447,26 @@ function SessionCard({ session, getAreaNameInArabic, getSessionAreas }) {
                   <p className="text-gray-600 text-sm bg-white p-3 rounded-lg border">
                     {session.notes}
                   </p>
+                </div>
+              )}
+
+              {/* التخفيضات */}
+              {session.appliedDiscounts && session.appliedDiscounts.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-green-600">🎁</span>
+                    <span className="font-medium text-gray-700">التخفيضات المطبقة:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {session.appliedDiscounts.map((discount, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs"
+                      >
+                        {discount}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 

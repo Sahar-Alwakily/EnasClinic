@@ -497,6 +497,17 @@ function SessionsTimeline({ groupedDates = [] }) {
                   </div>
                 </div>
                 
+                {s.appliedDiscounts && s.appliedDiscounts.length > 0 && (
+                  <div className="session-discounts">
+                    <span className="discount-icon">🎯</span>
+                    {s.appliedDiscounts.map((discount, idx) => (
+                      <span key={idx} className="discount-tag">
+                        {areaMaps.enToAr[discount] || discount}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
                 {s.notes && (
                   <div className="notes">
                     <span className="notes-icon">📝</span>
@@ -509,6 +520,15 @@ function SessionsTimeline({ groupedDates = [] }) {
                     <div className="therapist-info">
                       <span className="therapist-icon">👨‍⚕️</span>
                       المعالج: {s.therapist}
+                    </div>
+                  )}
+                  
+                  {s.originalPrice && s.discountedPrice && 
+                   parseInt(s.originalPrice) > parseInt(s.discountedPrice) && (
+                    <div className="price-info">
+                      <span className="original-price">{s.originalPrice} ₪</span>
+                      <span className="discount-arrow">→</span>
+                      <span className="final-price">{s.discountedPrice} ₪</span>
                     </div>
                   )}
                   
@@ -536,7 +556,13 @@ function SessionModal({
   onClose, 
   selectedParts, 
   onSave, 
-  isProcessing
+  prices,
+  isProcessing,
+  applicableDiscounts = [],
+  selectedDiscounts = [],
+  setSelectedDiscounts,
+  clientId,
+  updateRemainingSessions
 }) {
   const [notes, setNotes] = useState("");
   const [paymentType, setPaymentType] = useState("نقدي");
@@ -544,6 +570,31 @@ function SessionModal({
   const [paymentStatus, setPaymentStatus] = useState("كامل");
   const [therapist, setTherapist] = useState(""); 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // إزالة الحساب التلقائي للسعر
+  // سيتم إدخال المبلغ يدوياً من قبل المستخدم
+
+  // البحث عن حزمة في التخفيضات المختارة
+  const packageDiscount = useMemo(() => {
+    return applicableDiscounts.find(d => 
+      d.type === 'package' && selectedDiscounts.includes(d.area)
+    );
+  }, [applicableDiscounts, selectedDiscounts]);
+
+  // إذا كانت هناك حزمة، المبلغ = 0 (مدفوع مسبقاً)
+  // وإلا يترك للمستخدم إدخال المبلغ يدوياً
+  const finalPrice = useMemo(() => {
+    if (packageDiscount) {
+      return 0;
+    }
+    // إرجاع المبلغ المدخل يدوياً
+    return parseInt(paidAmount || "0");
+  }, [packageDiscount, paidAmount]);
+
+  const remainingAmount = useMemo(() => {
+    // لا يوجد حساب للمبلغ المتبقي لأن السعر غير محسوب تلقائياً
+    return 0;
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -553,20 +604,48 @@ function SessionModal({
     const formattedDate = selectedDateObj.toLocaleDateString('en-GB');
     const gregorianDate = selectedDate;
     
-    const actualPaidAmount = paidAmount || "0";
+    let sessionsUsed = 0;
+    let remainingPackageSessions = null;
+    let packageDiscount = null;
+    
+    // البحث عن حزمة في التخفيضات المختارة
+    selectedDiscounts.forEach(discountKey => {
+      const discount = applicableDiscounts.find(d => d && d.area === discountKey);
+      if (discount && discount.type === 'package') {
+        packageDiscount = discount;
+      }
+    });
+    
+    // إذا كان هناك حزمة، تحديث الجلسات المتبقية
+    if (packageDiscount && updateRemainingSessions) {
+      sessionsUsed = 1;
+      remainingPackageSessions = (packageDiscount.remainingSessions || packageDiscount.packageSessions) - 1;
+      await updateRemainingSessions(packageDiscount.area, sessionsUsed);
+    }
+    
+    // إذا كانت هناك حزمة، المبلغ المدفوع = 0
+    // وإلا استخدم المبلغ المدخل يدوياً
+    const actualPaidAmount = packageDiscount ? "0" : (paidAmount || "0");
     
     const sessionData = {
       notes,
-      paymentType: paymentType,
-      amount: actualPaidAmount,
+      paymentType: packageDiscount ? "حزمة مدفوعة" : paymentType,
+      amount: actualPaidAmount, // استخدام المبلغ المدخل يدوياً
       paidAmount: actualPaidAmount,
-      remainingAmount: "0",
-      paymentStatus: parseInt(actualPaidAmount) > 0 ? "كامل" : "غير مدفوع",
+      remainingAmount: "0", // لا يوجد متبقي في هذا النموذج
+      paymentStatus: packageDiscount ? "كامل" : (actualPaidAmount > 0 ? "كامل" : "غير مدفوع"),
       parts: selectedParts,
       date: formattedDate,
       gregorianDate: gregorianDate,
       therapist: therapist.trim(),
-      timestamp: selectedDateObj.toISOString()
+      appliedDiscounts: packageDiscount ? [packageDiscount.area] : selectedDiscounts,
+      originalPrice: actualPaidAmount, // نفس المبلغ المدخل
+      discountedPrice: actualPaidAmount, // نفس المبلغ المدخل
+      timestamp: selectedDateObj.toISOString(),
+      sessionsUsed: sessionsUsed,
+      packageName: packageDiscount ? packageDiscount.areaName : null,
+      remainingPackageSessions: remainingPackageSessions,
+      isPackageSession: !!packageDiscount
     };
 
     onSave(sessionData);
@@ -585,16 +664,126 @@ function SessionModal({
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-section">
             <label className="section-label">المناطق المحددة:</label>
-            <div className="selected-parts-list">
-              {selectedParts.map((part, index) => (
-                <div key={index} className="part-item">
-                  <span className="part-name">{part}</span>
-                </div>
-              ))}
+            <div className="selected-parts-text">
+              {selectedParts.length > 0 ? (
+                <p className="parts-display">
+                  {selectedParts.map((part, index) => (
+                    <span key={index} className="part-tag">
+                      {part}
+                      {index < selectedParts.length - 1 && <span className="separator">،</span>}
+                    </span>
+                  ))}
+                </p>
+              ) : (
+                <p className="no-parts">لا توجد مناطق محددة</p>
+              )}
             </div>
           </div>
 
-          {/* قسم معلومات الدفع */}
+          {/* قسم التخفيضات والحزم */}
+          {applicableDiscounts.length > 0 && (
+            <div className="form-section">
+              <label className="section-label">العروض المتاحة</label>
+              <div className="discounts-list">
+                {applicableDiscounts.map(discount => {
+                  const remainingSessions = discount.remainingSessions || discount.packageSessions;
+                  
+                  return (
+                    <div key={discount.area} className={`discount-item ${discount.type === 'package' ? 'package-item' : ''}`}>
+                      <label className="discount-label">
+                        <input
+                          type="checkbox"
+                          checked={selectedDiscounts.includes(discount.area)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              // إذا كان حزمة، لا يمكن اختياره مع تخفيضات أخرى
+                              if (discount.type === 'package') {
+                                setSelectedDiscounts([discount.area]);
+                                setPaidAmount("0"); // تعيين المبلغ إلى 0 تلقائياً
+                              } else {
+                                // إذا كان تخفيض عادي، إزالة أي حزمة مختارة
+                                setSelectedDiscounts(prev => 
+                                  [...prev.filter(d => {
+                                    const dObj = applicableDiscounts.find(ad => ad.area === d);
+                                    return dObj?.type !== 'package';
+                                  }), discount.area]
+                                );
+                              }
+                            } else {
+                              setSelectedDiscounts(prev => prev.filter(d => d !== discount.area));
+                              // إذا كانت الحزمة هي التي تم إلغاؤها، إعادة تفعيل حقل المبلغ
+                              if (discount.type === 'package') {
+                                setPaidAmount("");
+                              }
+                            }
+                          }}
+                        />
+                        <span className="discount-text">
+                          {discount.type === 'package' ? (
+                            <>
+                              <strong>📦 {discount.areaName}</strong>
+                              <div className="package-details-small">
+                                <span>{discount.packageSessions} جلسة مدفوعة مسبقاً</span>
+                                <span className="remaining-sessions">
+                                  ⏳ متبقي: {remainingSessions} جلسة
+                                </span>
+                              </div>
+                            </>
+                          ) : discount.area === 'fullbody' ? (
+                            <>
+                              <strong>👤 الجسم كامل</strong> - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+                              <span className="discount-note"> (تخفيض على المجموع الكلي)</span>
+                            </>
+                          ) : (
+                            <>
+                              {areaMaps.enToAr[discount.area] || discount.area} - {discount.type === 'percentage' ? `${discount.value}%` : `${discount.value} ₪`}
+                              <span className="discount-note"> (تخفيض على المنطقة فقط)</span>
+                            </>
+                          )}
+                          {discount.minSessions > 1 && ` (لـ ${discount.minSessions} مناطق فأكثر)`}
+                        </span>
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* عرض معلومات الحزمة إذا كانت مختارة */}
+          {packageDiscount && (
+            <div className="package-info-section">
+              <div className="package-header">
+                <span className="package-icon">📦</span>
+                <h4>حزمة مدفوعة مسبقاً</h4>
+              </div>
+              <div className="package-details-card">
+                <div className="package-row">
+                  <span>اسم الحزمة:</span>
+                  <strong>{packageDiscount.areaName}</strong>
+                </div>
+                <div className="package-row">
+                  <span>إجمالي الجلسات:</span>
+                  <strong>{packageDiscount.packageSessions} جلسة</strong>
+                </div>
+                <div className="package-row">
+                  <span>الجلسات المتبقية قبل هذه الجلسة:</span>
+                  <strong className="remaining-before">{packageDiscount.remainingSessions || packageDiscount.packageSessions} جلسة</strong>
+                </div>
+                <div className="package-row">
+                  <span>سيكون المتبقي بعد هذه الجلسة:</span>
+                  <strong className="remaining-after">
+                    {(packageDiscount.remainingSessions || packageDiscount.packageSessions) - 1} جلسة
+                  </strong>
+                </div>
+              </div>
+              <div className="package-note">
+                ✅ هذه الجلسة مدفوعة مسبقاً كجزء من الحزمة
+              </div>
+            </div>
+          )}
+
+          {/* قسم معلومات الدفع - يظهر دائماً */}
           <div className="form-section">
             <label className="section-label">معلومات الدفع</label>
             
@@ -604,10 +793,12 @@ function SessionModal({
                 value={paymentType} 
                 onChange={(e) => setPaymentType(e.target.value)}
                 className="form-input"
+                disabled={packageDiscount} // تعطيل إذا كانت حزمة
               >
                 <option value="نقدي">نقدي</option>
                 <option value="بطاقة">بطاقة</option>
                 <option value="تحويل">تحويل بنكي</option>
+                <option value="حزمة">حزمة مدفوعة</option>
               </select>
             </div>
 
@@ -620,14 +811,17 @@ function SessionModal({
                 placeholder="أدخل المبلغ المدفوع..."
                 className="form-input"
                 min="0"
-                required
+                disabled={packageDiscount} // تعطيل إذا كانت حزمة
+                required={!packageDiscount} // مطلوب إذا لم تكن حزمة
               />
-              <small className="input-note">
-                أدخل المبلغ المدفوع لهذه الجلسة
-              </small>
+              {!packageDiscount && (
+                <small className="input-note">
+                  أدخل المبلغ المدفوع لهذه الجلسة
+                </small>
+              )}
             </div>
 
-            {paidAmount && (
+            {!packageDiscount && paidAmount && (
               <div className="payment-status">
                 <div className="status-row">
                   <span>المبلغ المدخل:</span>
@@ -642,6 +836,19 @@ function SessionModal({
               </div>
             )}
           </div>
+
+          {/* إذا كانت هناك حزمة، إظهار رسالة بدلاً من معلومات الدفع */}
+          {packageDiscount && (
+            <div className="form-section">
+              <div className="package-payment-info">
+                <div className="payment-icon">✅</div>
+                <div className="payment-message">
+                  <h4>مدفوع مسبقاً</h4>
+                  <p>هذه الجلسة مدفوعة كجزء من الحزمة. سيتم خصم جلسة واحدة من رصيد الجلسات المتبقية.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="form-section">
             <label className="section-label">معلومات إضافية</label>
@@ -694,10 +901,12 @@ function SessionModal({
             </button>
             <button 
               type="submit" 
-              className="btn primary"
-              disabled={isProcessing || selectedParts.length === 0 || !paidAmount}
+              className={`btn ${packageDiscount ? 'package' : 'primary'}`}
+              disabled={isProcessing || selectedParts.length === 0 || (!packageDiscount && !paidAmount)}
             >
-              {isProcessing ? "جاري الحفظ..." : `حفظ الجلسة (${paidAmount} ₪)`}
+              {isProcessing ? "جاري الحفظ..." : 
+               packageDiscount ? `حفظ الجلسة من الحزمة (${selectedParts.length} منطقة)` : 
+               `حفظ الجلسة (${paidAmount} ₪)`}
             </button>
           </div>
         </form>
@@ -714,7 +923,97 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   const [healthOpen, setHealthOpen] = useState(false);
   const [groupedSessions, setGroupedSessions] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [prices, setPrices] = useState({});
   const [showSessionModal, setShowSessionModal] = useState(false);
+  const [applicableDiscounts, setApplicableDiscounts] = useState([]);
+  const [selectedDiscounts, setSelectedDiscounts] = useState([]);
+  const [discounts, setDiscounts] = useState({});
+
+  // جلب الأسعار من Firebase
+  useEffect(() => {
+    const pricesRef = ref(db, 'prices');
+    const unsub = onValue(pricesRef, (snap) => {
+      const pricesData = snap.val() || {};
+      setPrices(pricesData);
+    }, (error) => {
+      console.error('❌ خطأ في تحميل الأسعار:', error);
+    });
+    return () => unsub();
+  }, []);
+
+  // جلب التخفيضات من Firebase
+  useEffect(() => {
+    const discountsRef = ref(db, 'discounts');
+    const unsub = onValue(discountsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const discountsData = snapshot.val();
+        setDiscounts(discountsData);
+      } else {
+        setDiscounts({});
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // حساب التخفيضات المتاحة
+  useEffect(() => {
+    if (!discounts || selectedParts.length === 0) {
+      setApplicableDiscounts([]);
+      return;
+    }
+
+    const today = new Date();
+    const availableDiscounts = [];
+
+    // تحويل discounts إلى مصفوفة
+    const discountsArray = Array.isArray(discounts) ? discounts : Object.values(discounts);
+    
+    discountsArray.forEach(discount => {
+      if (!discount) return;
+      
+      // التحقق من أن التخفيض نشط
+      if (discount.isActive === false) return;
+      
+      // التحقق من تاريخ الصلاحية
+      if (discount.validUntil) {
+        try {
+          const validDate = new Date(discount.validUntil);
+          if (validDate < today) return;
+        } catch (error) {
+          console.error('Invalid date format:', discount.validUntil);
+        }
+      }
+      
+      // إذا كان التخفيض حزمة (package)، فهو متاح دائماً
+      if (discount.type === 'package') {
+        // التحقق من وجود جلسات متبقية
+        const remaining = discount.remainingSessions || discount.packageSessions;
+        if (remaining > 0) {
+          availableDiscounts.push(discount);
+        }
+      }
+      // تخفيض الجسم كامل - متاح دائماً إذا كان هناك مناطق محددة
+      else if (discount.area === 'fullbody') {
+        availableDiscounts.push(discount);
+      } 
+      // تخفيضات المناطق - متاحة فقط إذا كانت المنطقة مطابقة
+      else {
+        const hasMatchingArea = selectedParts.some(arabicPart => {
+          // تحويل المنطقة المحددة (بالعربي) إلى إنجليزي للمقارنة
+          const englishPart = areaMaps.arToEn[arabicPart] || arabicPart;
+          const partKey = englishPart.toLowerCase();
+          return partKey === discount.area;
+        });
+        
+        if (hasMatchingArea) {
+          availableDiscounts.push(discount);
+        }
+      }
+    });
+
+    setApplicableDiscounts(availableDiscounts);
+    setSelectedDiscounts([]);
+  }, [selectedParts, discounts]);
 
   useEffect(() => {
     if (!client?.idNumber) return;
@@ -763,7 +1062,41 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
     []
   );
 
-  const addSession = async (sessionData) => {
+  // دالة لتحديث الجلسات المتبقية في الحزمة
+// BodyMap3D.js - تحديث دالة updateRemainingSessions
+
+// دالة لتحديث الجلسات المتبقية في الحزمة
+const updateRemainingSessions = async (areaKey, sessionsUsed = 1) => {
+  try {
+    const discountRef = ref(db, `discounts/${areaKey}`);
+    onValue(discountRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const discount = snapshot.val();
+        const currentRemaining = discount.remainingSessions || discount.packageSessions;
+        const newRemaining = Math.max(0, currentRemaining - sessionsUsed);
+        
+        // تحديث عدد الجلسات المتبقية - يجب أن يكون كائنًا
+        const updates = {
+          remainingSessions: newRemaining
+        };
+        
+        // إذا نفذت الجلسات، تعطيل التخفيض تلقائياً
+        if (newRemaining === 0) {
+          updates.isActive = false;
+        }
+        
+        // استخدام update مع كائن التحديثات
+        update(ref(db, `discounts/${areaKey}`), updates);
+      }
+    }, { onlyOnce: true });
+  } catch (error) {
+    console.error('Error updating remaining sessions:', error);
+  }
+};
+
+// BodyMap3D.js - تحديث دالة addSession لإضافة دفعة للحزم
+
+const addSession = async (sessionData) => {
   if (!client?.idNumber)
     return { success: false, message: "client id missing" };
   setIsProcessing(true);
@@ -772,6 +1105,17 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
     const newRef = push(refSessions);
     
     const sessionId = newRef.key;
+    
+    // تحويل أسماء التخفيضات إلى عربية للعرض
+    const arabicDiscounts = selectedDiscounts.map(discount => 
+      areaMaps.enToAr[discount] || discount
+    );
+    
+    // تحقق إذا كانت هناك حزمة مختارة
+    const isPackageSession = selectedDiscounts.some(discountKey => {
+      const discount = applicableDiscounts.find(d => d && d.area === discountKey);
+      return discount?.type === 'package';
+    });
     
     const toSave = {
       ...sessionData,
@@ -788,15 +1132,52 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       paymentStatus: sessionData.paymentStatus || "غير مدفوع",
       areasCount: selectedParts.length,
       areas: selectedParts,
-      therapist: sessionData.therapist || "غير محدد"
+      therapist: sessionData.therapist || "غير محدد",
+      appliedDiscounts: selectedDiscounts,
+      appliedDiscountsArabic: arabicDiscounts,
+      originalPrice: sessionData.originalPrice || "0",
+      discountedPrice: sessionData.discountedPrice || sessionData.amount || "0",
+      sessionsUsed: sessionData.sessionsUsed || 0,
+      packageName: sessionData.packageName,
+      remainingPackageSessions: sessionData.remainingPackageSessions,
+      isPackageSession: isPackageSession // إضافة هذه العلامة
     };
     
     await set(newRef, toSave);
+    
+    // إذا كانت هناك حزمة، أضف دفعة في قسم payments
+    if (isPackageSession) {
+      const packageDiscount = applicableDiscounts.find(d => 
+        d && d.type === 'package' && selectedDiscounts.includes(d.area)
+      );
+      
+      if (packageDiscount) {
+        const paymentRef = push(ref(db, 'payments'));
+        const paymentData = {
+          patientId: client.idNumber,
+          patientName: client.fullName,
+          paidAmount: 0, // لأن الحزمة مدفوعة مسبقاً
+          paymentDate: sessionData.timestamp || new Date().toISOString(),
+          paymentType: 'حزمة مدفوعة مسبقاً',
+          description: `جلسة من حزمة ${packageDiscount.areaName || packageDiscount.area}`,
+          status: 'مكتمل',
+          previousRemaining: 0,
+          newRemaining: 0,
+          sessionId: sessionId,
+          packageName: packageDiscount.areaName,
+          remainingPackageSessions: sessionData.remainingPackageSessions,
+          isPackagePayment: true // علامة للتمييز
+        };
+        
+        await set(paymentRef, paymentData);
+      }
+    }
     
     onSaveSession?.(toSave);
     
     setSelectedParts([]);
     setShowSessionModal(false);
+    setSelectedDiscounts([]);
     return { success: true, message: `تمت إضافة جلسة بتاريخ ${sessionData.date} تشمل ${selectedParts.length} منطقة` };
   } catch (err) {
     console.error(err);
@@ -917,7 +1298,13 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         onClose={() => setShowSessionModal(false)}
         selectedParts={selectedParts}
         onSave={addSession}
+        prices={prices}
         isProcessing={isProcessing}
+        applicableDiscounts={applicableDiscounts}
+        selectedDiscounts={selectedDiscounts}
+        setSelectedDiscounts={setSelectedDiscounts}
+        clientId={client?.idNumber}
+        updateRemainingSessions={updateRemainingSessions}
       />
     </div>
   );
