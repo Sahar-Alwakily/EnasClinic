@@ -12,11 +12,9 @@ export default function Dashboard({ user }) {
   const [stats, setStats] = useState({
     totalClients: 0,
     todaySessions: 0,
-    monthlyRevenue: 0,
     totalSessions: 0,
     satisfactionRate: "0%",
-    activeClients: 0,
-    monthlyGrowth: "0%"
+    activeClients: 0
   });
   const [clientSessions, setClientSessions] = useState([]);
   const navigate = useNavigate();
@@ -74,15 +72,9 @@ export default function Dashboard({ user }) {
         
         let todaySessions = 0;
         let totalSessions = 0;
-        let currentMonthRevenue = 0;
-        let previousMonthRevenue = 0;
         let clientsData = [];
         
         const today = new Date().toISOString().split('T')[0];
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-        const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
         if (sessionsSnapshot.exists()) {
           const sessionsData = sessionsSnapshot.val();
@@ -100,23 +92,6 @@ export default function Dashboard({ user }) {
               // جلسات اليوم
               if (session.date === today) {
                 todaySessions++;
-              }
-              
-              // حساب الإيرادات
-              if (session.amount) {
-                const sessionAmount = parseInt(session.amount) || 0;
-                const sessionDate = new Date(session.timestamp || session.date);
-                const sessionMonth = sessionDate.getMonth();
-                const sessionYear = sessionDate.getFullYear();
-                
-                // إيرادات الشهر الحالي
-                if (sessionMonth === currentMonth && sessionYear === currentYear) {
-                  currentMonthRevenue += sessionAmount;
-                }
-                // إيرادات الشهر الماضي
-                else if (sessionMonth === previousMonth && sessionYear === previousYear) {
-                  previousMonthRevenue += sessionAmount;
-                }
               }
               
               totalSessions++;
@@ -153,23 +128,12 @@ export default function Dashboard({ user }) {
         // ترتيب العملاء من الأحدث إلى الأقدم
         clientsData.sort((a, b) => new Date(b.lastSessionDate) - new Date(a.lastSessionDate));
 
-        // حساب نمو الإيرادات
-        let monthlyGrowth = "0%";
-        if (previousMonthRevenue > 0) {
-          const growth = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
-          monthlyGrowth = `${growth >= 0 ? '+' : ''}${Math.round(growth)}%`;
-        } else if (currentMonthRevenue > 0) {
-          monthlyGrowth = "+100%";
-        }
-
         setStats({
           totalClients,
           todaySessions,
-          monthlyRevenue: currentMonthRevenue,
           totalSessions,
           satisfactionRate: `${satisfactionRate}%`,
-          activeClients: totalClients,
-          monthlyGrowth
+          activeClients: totalClients
         });
 
         setClientSessions(clientsData);
@@ -228,7 +192,7 @@ export default function Dashboard({ user }) {
         <Header manager={manager} />
 
         {/* الإحصائيات في الأعلى - تصميم متجاوب */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {/* إجمالي العملاء */}
           <div className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
             <div className="text-center">
@@ -250,14 +214,6 @@ export default function Dashboard({ user }) {
             <div className="text-center">
               <div className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.totalSessions}</div>
               <div className="text-xs sm:text-sm opacity-90 mt-1 sm:mt-2">إجمالي الجلسات</div>
-            </div>
-          </div>
-          
-          {/* دخل الشهر */}
-          <div className="bg-gradient-to-br from-orange-500 to-amber-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
-            <div className="text-center">
-              <div className="text-xl sm:text-2xl lg:text-3xl font-bold">{stats.monthlyRevenue} ₪ </div>
-              <div className="text-xs sm:text-sm opacity-90 mt-1 sm:mt-2">دخل الشهر</div>
             </div>
           </div>
         </div>
@@ -298,19 +254,6 @@ export default function Dashboard({ user }) {
                     <div className="text-xs opacity-90">إضافة عميل جديد للنظام</div>
                   </div>
                 </button>
-
-                <button
-                  onClick={() => navigate("/add-review")}
-                  className="w-full flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 group"
-                >
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <span className="text-xs sm:text-sm">⭐</span>
-                  </div>
-                  <div className="text-right flex-1">
-                    <div className="font-bold text-xs sm:text-sm">رأي العميل</div>
-                    <div className="text-xs opacity-90">تسجيل تقييم جديد</div>
-                  </div>
-                </button>
               </div>
             </div>
 
@@ -325,14 +268,6 @@ export default function Dashboard({ user }) {
                 <div className="flex items-center justify-between">
                   <span className="text-xs sm:text-sm text-gray-600">العملاء النشطين</span>
                   <span className="text-sm sm:text-lg font-bold text-purple-600">{stats.activeClients}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm text-gray-600">نمو الإيرادات</span>
-                  <span className={`text-sm sm:text-lg font-bold ${
-                    stats.monthlyGrowth.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {stats.monthlyGrowth}
-                  </span>
                 </div>
               </div>
             </div>
