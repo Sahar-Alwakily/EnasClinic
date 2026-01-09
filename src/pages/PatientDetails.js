@@ -485,23 +485,23 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
   };
 
   return (
-    <div className="space-y-3 md:space-y-4 lg:space-y-6">
-      <div className="bg-white rounded-xl md:rounded-2xl shadow-md md:shadow-lg border border-gray-100 md:border-purple-100 p-3 sm:p-4 md:p-5 lg:p-6 max-w-4xl mx-auto">
+    <div className="space-y-3 md:space-y-4">
+      <div className="bg-white rounded-xl md:rounded-2xl shadow-md md:shadow-lg border border-gray-100 md:border-purple-100 p-3 sm:p-4 md:p-4 lg:p-5 max-w-xl lg:max-w-2xl mx-auto">
         {/* رأس التقويم */}
-        <div className="flex justify-between items-center mb-3 sm:mb-4 md:mb-5">
+        <div className="flex justify-between items-center mb-2 sm:mb-3 md:mb-3">
           <button
             onClick={() => changeMonth(-1)}
-            className="p-2 sm:p-2.5 md:p-3 hover:bg-gray-100 rounded-lg transition text-lg sm:text-xl md:text-2xl flex-shrink-0"
+            className="p-1.5 sm:p-2 md:p-2 hover:bg-gray-100 rounded-lg transition text-base sm:text-lg md:text-xl flex-shrink-0"
             aria-label="الشهر السابق"
           >
             ←
           </button>
-          <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-800 px-2 sm:px-4">
+          <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-800 px-2 sm:px-3">
             {months[month]} {year}
           </h3>
           <button
             onClick={() => changeMonth(1)}
-            className="p-2 sm:p-2.5 md:p-3 hover:bg-gray-100 rounded-lg transition text-lg sm:text-xl md:text-2xl flex-shrink-0"
+            className="p-1.5 sm:p-2 md:p-2 hover:bg-gray-100 rounded-lg transition text-base sm:text-lg md:text-xl flex-shrink-0"
             aria-label="الشهر التالي"
           >
             →
@@ -509,24 +509,24 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
         </div>
 
         {/* أيام الأسبوع */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-2 md:gap-3 mb-2 md:mb-3">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2 mb-2">
           {weekDays.map((day, index) => (
-            <div key={index} className="text-center font-semibold text-gray-600 text-xs sm:text-sm md:text-base py-1 sm:py-2 md:py-3">
+            <div key={index} className="text-center font-semibold text-gray-600 text-xs sm:text-xs md:text-sm py-1 sm:py-1.5">
               {day}
             </div>
           ))}
         </div>
 
         {/* الأيام */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-2 md:gap-3">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2">
           {days.map((day, index) => (
             <div
               key={index}
-              className={`aspect-square flex items-center justify-center rounded-lg md:rounded-xl cursor-pointer transition-all text-xs sm:text-sm md:text-base lg:text-lg font-medium min-h-[36px] sm:min-h-[44px] md:min-h-[52px] ${
+              className={`aspect-square flex items-center justify-center rounded-lg cursor-pointer transition-all text-xs sm:text-xs md:text-sm font-medium min-h-[32px] sm:min-h-[36px] md:min-h-[40px] lg:min-h-[44px] ${
                 day === null
                   ? ''
                   : isSelected(day)
-                  ? 'bg-purple-600 text-white font-bold ring-2 ring-purple-400 ring-offset-1 md:ring-offset-2 shadow-md'
+                  ? 'bg-purple-600 text-white font-bold ring-2 ring-purple-400 ring-offset-1 shadow-md'
                   : hasSession(day)
                   ? 'bg-red-500 text-white font-bold hover:bg-red-600 active:scale-95 shadow-sm'
                   : 'bg-gray-50 hover:bg-gray-100 active:scale-95 border border-gray-200'
@@ -539,13 +539,13 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
         </div>
 
         {/* مفتاح الألوان */}
-        <div className="mt-3 sm:mt-4 md:mt-5 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm md:text-base">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 bg-red-500 rounded shadow-sm"></div>
+        <div className="mt-2 sm:mt-3 flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs sm:text-xs md:text-sm">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-red-500 rounded shadow-sm"></div>
             <span className="text-gray-600 font-medium">جلسة موجودة</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 bg-purple-600 rounded ring-2 ring-purple-400 shadow-sm"></div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-purple-600 rounded ring-2 ring-purple-400 shadow-sm"></div>
             <span className="text-gray-600 font-medium">محدد</span>
           </div>
         </div>
