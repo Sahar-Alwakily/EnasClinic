@@ -98,9 +98,22 @@ export default function PatientDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20">
-      {/* HEADER */}
-      <div className="bg-white shadow-md rounded-b-3xl pb-6">
+    <>
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+      <div className="min-h-screen bg-gray-100 pb-20">
+        {/* HEADER */}
+        <div className="bg-white shadow-md rounded-b-3xl pb-6">
         <div className="p-4 flex items-center justify-between">
           <button
             onClick={() => navigate(-1)}
@@ -343,7 +356,8 @@ export default function PatientDetails() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -351,7 +365,6 @@ export default function PatientDetails() {
 function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedSession, setSelectedSession] = useState(null);
-  const [showModal, setShowModal] = useState(false);
 
   // تحويل الجلسات إلى خريطة بالتواريخ
   const sessionsByDate = {};
@@ -424,13 +437,20 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
     return sessionsByDate[dateStr] || [];
   };
 
-  // فتح modal لعرض معلومات الجلسة
+  // عرض معلومات الجلسة
   const handleDateClick = (day) => {
     const daySessions = getDaySessions(day);
     if (daySessions.length > 0) {
       // إذا كان هناك عدة جلسات في نفس اليوم، نعرض آخر واحدة
-      setSelectedSession(daySessions[daySessions.length - 1]);
-      setShowModal(true);
+      // إذا كانت الجلسة المحددة هي نفسها، نلغى التحديد
+      const lastSession = daySessions[daySessions.length - 1];
+      if (selectedSession && selectedSession.id === lastSession.id) {
+        setSelectedSession(null);
+      } else {
+        setSelectedSession(lastSession);
+      }
+    } else {
+      setSelectedSession(null);
     }
   };
 
@@ -445,48 +465,58 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
     days.push(day);
   }
 
+  // التحقق إذا كان اليوم محدد
+  const isSelected = (day) => {
+    if (!selectedSession || !day) return false;
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const daySessions = getDaySessions(day);
+    return daySessions.some(s => s.id === selectedSession.id);
+  };
+
   return (
-    <>
-      <div className="bg-white rounded-2xl shadow-lg border border-purple-100 p-4">
+    <div className="space-y-4">
+      <div className="bg-white rounded-2xl shadow-lg border border-purple-100 p-3 sm:p-4 md:p-6">
         {/* رأس التقويم */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-3 sm:mb-4">
           <button
             onClick={() => changeMonth(-1)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
+            className="p-2 sm:p-3 hover:bg-gray-100 rounded-lg transition text-lg sm:text-xl"
           >
             ←
           </button>
-          <h3 className="text-lg font-bold text-gray-800">
+          <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800">
             {months[month]} {year}
           </h3>
           <button
             onClick={() => changeMonth(1)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
+            className="p-2 sm:p-3 hover:bg-gray-100 rounded-lg transition text-lg sm:text-xl"
           >
             →
           </button>
         </div>
 
         {/* أيام الأسبوع */}
-        <div className="grid grid-cols-7 gap-2 mb-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
           {weekDays.map((day, index) => (
-            <div key={index} className="text-center font-semibold text-gray-600 text-sm py-2">
+            <div key={index} className="text-center font-semibold text-gray-600 text-xs sm:text-sm py-1 sm:py-2">
               {day}
             </div>
           ))}
         </div>
 
         {/* الأيام */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {days.map((day, index) => (
             <div
               key={index}
-              className={`aspect-square flex items-center justify-center rounded-lg cursor-pointer transition-all ${
+              className={`aspect-square flex items-center justify-center rounded-lg cursor-pointer transition-all text-xs sm:text-sm md:text-base ${
                 day === null
                   ? ''
+                  : isSelected(day)
+                  ? 'bg-purple-600 text-white font-bold ring-2 ring-purple-400 ring-offset-2'
                   : hasSession(day)
-                  ? 'bg-red-500 text-white font-bold hover:bg-red-600'
-                  : 'bg-gray-50 hover:bg-gray-100'
+                  ? 'bg-red-500 text-white font-bold hover:bg-red-600 active:scale-95'
+                  : 'bg-gray-50 hover:bg-gray-100 active:scale-95'
               }`}
               onClick={() => day && handleDateClick(day)}
             >
@@ -496,95 +526,98 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
         </div>
 
         {/* مفتاح الألوان */}
-        <div className="mt-4 flex items-center gap-4 text-sm">
+        <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-500 rounded"></div>
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
             <span className="text-gray-600">جلسة موجودة</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-purple-600 rounded ring-2 ring-purple-400"></div>
+            <span className="text-gray-600">محدد</span>
           </div>
         </div>
       </div>
 
-      {/* Modal لعرض معلومات الجلسة */}
-      {showModal && selectedSession && (
-        <SessionModal
+      {/* بطاقة عرض معلومات الجلسة */}
+      {selectedSession && (
+        <SessionCard
           session={selectedSession}
           getAreaNameInArabic={getAreaNameInArabic}
           getSessionAreas={getSessionAreas}
-          onClose={() => setShowModal(false)}
+          onClose={() => setSelectedSession(null)}
         />
       )}
-    </>
+    </div>
   );
 }
 
-/* ---------- SESSION MODAL COMPONENT ----------- */
-function SessionModal({ session, getAreaNameInArabic, getSessionAreas, onClose }) {
+/* ---------- SESSION CARD COMPONENT ----------- */
+function SessionCard({ session, getAreaNameInArabic, getSessionAreas, onClose }) {
   const areas = getSessionAreas(session);
-  const sessionDate = session.date || new Date(session.timestamp).toLocaleDateString("ar-SA");
+  const sessionDate = session.date || (session.timestamp ? new Date(session.timestamp).toLocaleDateString("ar-SA") : "غير محدد");
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div 
-        className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* العنوان */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-gray-800">معلومات الجلسة</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
-          >
-            ✕
-          </button>
-        </div>
+    <div 
+      className="bg-white rounded-2xl shadow-lg border border-purple-100 p-4 sm:p-5 md:p-6"
+      style={{
+        animation: 'fadeIn 0.3s ease-in-out'
+      }}
+    >
+      {/* العنوان مع زر الإغلاق */}
+      <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+        <h3 className="text-lg sm:text-xl font-bold text-gray-800">معلومات الجلسة</h3>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 text-xl sm:text-2xl transition p-1 hover:bg-gray-100 rounded-lg"
+          aria-label="إغلاق"
+        >
+          ✕
+        </button>
+      </div>
 
+      <div className="space-y-4">
         {/* التاريخ */}
-        <div className="mb-4 pb-4 border-b">
-          <div className="text-gray-600 text-sm mb-1">تاريخ الجلسة</div>
-          <div className="text-lg font-bold text-purple-700">{sessionDate}</div>
+        <div>
+          <div className="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2 font-medium">📅 تاريخ الجلسة</div>
+          <div className="text-base sm:text-lg md:text-xl font-bold text-purple-700">{sessionDate}</div>
         </div>
 
         {/* اسم المعالج */}
         {session.therapist && (
-          <div className="mb-4 pb-4 border-b">
-            <div className="text-gray-600 text-sm mb-2">👨‍⚕️ المعالج</div>
-            <div className="text-lg font-medium text-gray-800">{session.therapist}</div>
+          <div className="pt-3 border-t border-gray-100">
+            <div className="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2 font-medium">👨‍⚕️ المعالج</div>
+            <div className="text-base sm:text-lg font-medium text-gray-800">{session.therapist}</div>
           </div>
         )}
 
         {/* المناطق */}
-        <div className="mb-4 pb-4 border-b">
-          <div className="text-gray-600 text-sm mb-2">المناطق المعالجة</div>
+        <div className="pt-3 border-t border-gray-100">
+          <div className="text-gray-500 text-xs sm:text-sm mb-2 sm:mb-3 font-medium">المناطق المعالجة</div>
           <div className="flex flex-wrap gap-2">
-            {areas.map((area, i) => (
-              <span
-                key={i}
-                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium"
-              >
-                {area}
-              </span>
-            ))}
+            {areas.length > 0 ? (
+              areas.map((area, i) => (
+                <span
+                  key={i}
+                  className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-xs sm:text-sm font-medium"
+                >
+                  {area}
+                </span>
+              ))
+            ) : (
+              <span className="text-gray-400 text-sm">لا توجد مناطق محددة</span>
+            )}
           </div>
         </div>
 
         {/* الملاحظات */}
         {session.notes && (
-          <div className="mb-4">
-            <div className="text-gray-600 text-sm mb-2">📝 الملاحظات</div>
-            <div className="bg-gray-50 p-3 rounded-lg text-gray-700 text-sm">
+          <div className="pt-3 border-t border-gray-100">
+            <div className="text-gray-500 text-xs sm:text-sm mb-2 font-medium">📝 الملاحظات</div>
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg text-gray-700 text-sm sm:text-base leading-relaxed">
               {session.notes}
             </div>
           </div>
         )}
-
-        {/* زر الإغلاق */}
-        <button
-          onClick={onClose}
-          className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition mt-4"
-        >
-          إغلاق
-        </button>
       </div>
     </div>
   );
