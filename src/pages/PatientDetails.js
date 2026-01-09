@@ -644,9 +644,9 @@ function MonthlyCalendar({ sessions, getAreaNameInArabic, getSessionAreas }) {
               onClose={() => setSelectedSession(null)}
             />
           ) : (
-            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center text-gray-400">
-              <div className="text-3xl mb-2">📅</div>
-              <p className="text-sm">اختر تاريخاً لعرض معلومات الجلسة</p>
+            <div className="bg-white rounded-lg shadow-md border border-gray-100 p-4 text-center text-gray-400">
+              <div className="text-xl mb-1">📅</div>
+              <p className="text-xs">اختر تاريخاً لعرض معلومات الجلسة</p>
             </div>
           )}
         </div>
@@ -662,62 +662,62 @@ function SessionCard({ session, getAreaNameInArabic, getSessionAreas, onClose })
 
   return (
     <div 
-      className="bg-white rounded-2xl shadow-lg border border-purple-100 p-4 sm:p-5 md:p-6"
+      className="bg-white rounded-lg md:rounded-xl shadow-md border border-purple-100 p-2.5 sm:p-3 md:p-3"
       style={{
         animation: 'fadeIn 0.3s ease-in-out'
       }}
     >
       {/* العنوان مع زر الإغلاق */}
-      <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-        <h3 className="text-lg sm:text-xl font-bold text-gray-800">معلومات الجلسة</h3>
+      <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-200">
+        <h3 className="text-sm sm:text-base font-bold text-gray-800">معلومات الجلسة</h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-xl sm:text-2xl transition p-1 hover:bg-gray-100 rounded-lg"
+          className="text-gray-400 hover:text-gray-600 text-base sm:text-lg transition p-0.5 hover:bg-gray-100 rounded"
           aria-label="إغلاق"
         >
           ✕
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* التاريخ */}
         <div>
-          <div className="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2 font-medium">📅 تاريخ الجلسة</div>
-          <div className="text-base sm:text-lg md:text-xl font-bold text-purple-700">{sessionDate}</div>
+          <div className="text-gray-500 text-[10px] sm:text-xs mb-0.5 font-medium">📅 تاريخ الجلسة</div>
+          <div className="text-xs sm:text-sm md:text-base font-bold text-purple-700">{sessionDate}</div>
         </div>
 
         {/* اسم المعالج */}
         {session.therapist && (
-          <div className="pt-3 border-t border-gray-100">
-            <div className="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2 font-medium">👨‍⚕️ المعالج</div>
-            <div className="text-base sm:text-lg font-medium text-gray-800">{session.therapist}</div>
+          <div className="pt-1.5 border-t border-gray-100">
+            <div className="text-gray-500 text-[10px] sm:text-xs mb-0.5 font-medium">👨‍⚕️ المعالج</div>
+            <div className="text-xs sm:text-sm font-medium text-gray-800">{session.therapist}</div>
           </div>
         )}
 
         {/* المناطق */}
-        <div className="pt-3 border-t border-gray-100">
-          <div className="text-gray-500 text-xs sm:text-sm mb-2 sm:mb-3 font-medium">المناطق المعالجة</div>
-          <div className="flex flex-wrap gap-2">
+        <div className="pt-1.5 border-t border-gray-100">
+          <div className="text-gray-500 text-[10px] sm:text-xs mb-1 font-medium">المناطق المعالجة</div>
+          <div className="flex flex-wrap gap-1">
             {areas.length > 0 ? (
               areas.map((area, i) => (
                 <span
                   key={i}
-                  className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-xs sm:text-sm font-medium"
+                  className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-purple-100 text-purple-700 rounded-full text-[10px] sm:text-xs font-medium"
                 >
                   {area}
                 </span>
               ))
             ) : (
-              <span className="text-gray-400 text-sm">لا توجد مناطق محددة</span>
+              <span className="text-gray-400 text-[10px] sm:text-xs">لا توجد مناطق محددة</span>
             )}
           </div>
         </div>
 
         {/* الملاحظات */}
         {session.notes && (
-          <div className="pt-3 border-t border-gray-100">
-            <div className="text-gray-500 text-xs sm:text-sm mb-2 font-medium">📝 الملاحظات</div>
-            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg text-gray-700 text-sm sm:text-base leading-relaxed">
+          <div className="pt-1.5 border-t border-gray-100">
+            <div className="text-gray-500 text-[10px] sm:text-xs mb-1 font-medium">📝 الملاحظات</div>
+            <div className="bg-gray-50 p-1.5 sm:p-2 rounded text-gray-700 text-[10px] sm:text-xs leading-relaxed">
               {session.notes}
             </div>
           </div>
