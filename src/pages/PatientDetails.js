@@ -90,15 +90,9 @@ export default function PatientDetails() {
   );
 
   // حساب المبلغ المستخدم من החבילה
-  const sortedSessionsForPackage = [...sessions].sort((a, b) => {
-    const timestampA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-    const timestampB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-    return timestampB - timestampA;
-  });
-
   const packageCreatedAt = patient?.packageCreatedAt ? new Date(patient.packageCreatedAt).getTime() : 0;
   
-  const totalUsedAmount = sortedSessionsForPackage.reduce((sum, session) => {
+  const totalUsedAmount = sessions.reduce((sum, session) => {
     // حساب فقط الجلسات التي تمت بعد إنشاء החבילה
     const sessionTimestamp = session.timestamp ? new Date(session.timestamp).getTime() : 0;
     if (packageCreatedAt > 0 && sessionTimestamp < packageCreatedAt) {
@@ -502,18 +496,14 @@ export default function PatientDetails() {
                         </button>
                       </div>
                     </div>
-                    {sessions.length > 0 && (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-gray-700">المبلغ المدفوع:</span>
-                          <span className="text-sm font-bold text-red-600">{totalUsedAmount.toFixed(2)} ₪</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-gray-700">المبلغ المتبقي:</span>
-                          <span className="text-sm font-bold text-orange-600">{remainingAmount.toFixed(2)} ₪</span>
-                        </div>
-                      </>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">المبلغ المدفوع:</span>
+                      <span className="text-sm font-bold text-red-600">{totalUsedAmount.toFixed(2)} ₪</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">المبلغ المتبقي:</span>
+                      <span className="text-sm font-bold text-orange-600">{remainingAmount.toFixed(2)} ₪</span>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -863,8 +853,8 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
         </div>
       )}
 
-      {/* قسم החבילה - يظهر دائماً إذا كانت هناك جلسات */}
-      {sortedSessions.length > 0 && (
+      {/* قسم החבילה - تم نقله إلى داخل تبويب الجلسات */}
+      {false && sortedSessions.length > 0 && (
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
           <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
             <span>📦</span>

@@ -462,7 +462,7 @@ function SessionModal({
         gregorianDate: gregorianDate,
         therapist: therapist.trim(),
         timestamp: selectedDateObj.toISOString(),
-        packageAmount: client?.hasPackage && packageAmount ? parseFloat(packageAmount) : (client?.hasPackage ? 0 : null)
+        packageAmount: client?.hasPackage && packageAmount && packageAmount.trim() !== "" ? parseFloat(packageAmount) : null
       };
 
       console.log('بيانات الجلسة المراد حفظها:', sessionData);
