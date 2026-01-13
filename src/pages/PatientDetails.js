@@ -482,28 +482,69 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
 
   return (
     <div className="space-y-3 md:space-y-4 lg:space-y-6" style={{ width: '100%' }}>
-      {/* قسم الاختيار */}
+      {/* قسم إعدادات الجلسات */}
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
         <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
           <span>⚙️</span>
           <span>إعدادات الجلسات</span>
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">نوع السلسلة:</label>
-            <select className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
-              <option>شاملة</option>
-              <option>جزئية</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">الحالة:</label>
-            <select className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
-              <option>نشطة</option>
-              <option>مكتملة</option>
-              <option>متوقفة</option>
-            </select>
-          </div>
+        
+        {/* معلومات החבילה */}
+        <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+          {patient?.hasPackage ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-700">📦 الحالة:</span>
+                <span className="text-sm font-bold text-green-600">لديه חבילה</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-700">عدد الجلسات في החבילה:</span>
+                <span className="text-sm font-bold text-purple-600">{patient.packageSessions || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-700">المبلغ المدفوع:</span>
+                <span className="text-sm font-bold text-blue-600">{patient.packagePaidAmount || 0} ₪</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-700">الجلسات المستخدمة:</span>
+                <span className="text-sm font-bold text-gray-600">{sessions.filter(s => s.packageAmount).length || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-700">الجلسات المتبقية:</span>
+                <span className="text-sm font-bold text-orange-600">
+                  {Math.max(0, (patient.packageSessions || 0) - (sessions.filter(s => s.packageAmount).length || 0))}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="text-red-600 font-semibold mb-2">❌ لا توجد חבילה</div>
+              <button
+                onClick={() => {
+                  const hasPackage = window.confirm('هل تريد إضافة חבילה لهذا العميل؟');
+                  if (hasPackage) {
+                    const sessionsCount = prompt('كم عدد الجلسات في החבילה؟');
+                    const paidAmount = prompt('كم المبلغ المدفوع للחבילה؟');
+                    if (sessionsCount && paidAmount) {
+                      const patientRef = ref(db, `patients/${patientId}`);
+                      update(patientRef, {
+                        hasPackage: true,
+                        packageSessions: parseInt(sessionsCount),
+                        packagePaidAmount: parseFloat(paidAmount)
+                      }).then(() => {
+                        alert('تم إضافة החבילה بنجاح');
+                      }).catch(err => {
+                        alert('حدث خطأ: ' + err.message);
+                      });
+                    }
+                  }
+                }}
+                className="mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+              >
+                ➕ إضافة חבילה للمستقبل
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -578,6 +619,25 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                       <span className="truncate block max-w-[80px] sm:max-w-[100px] md:max-w-none mx-auto" title={session.therapist || 'غير محدد'}>
                         {session.therapist || 'غير محدد'}
                       </span>
+                    </td>
+                  ))}
+                </tr>
+
+                {/* الصف الثالث: החבילה */}
+                <tr className="bg-blue-50 hover:bg-blue-100 transition">
+                  <td className="border border-gray-300 px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm md:text-base font-bold text-gray-700 sticky right-0 bg-blue-50 z-10 shadow-lg">
+                    📦 החבילה
+                  </td>
+                  {sortedSessions.map((session, index) => (
+                    <td 
+                      key={`package-${session.id || index}`} 
+                      className="border border-gray-300 px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-xs sm:text-sm md:text-base text-center"
+                    >
+                      {session.packageAmount ? (
+                        <span className="font-bold text-green-600">{session.packageAmount} ₪</span>
+                      ) : (
+                        <span className="text-red-500 font-medium">لا توجد חבילה</span>
+                      )}
                     </td>
                   ))}
                 </tr>

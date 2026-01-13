@@ -412,16 +412,22 @@ function SessionModal({
   selectedParts, 
   onSave, 
   prices,
-  isProcessing
+  isProcessing,
+  client
 }) {
   const [notes, setNotes] = useState("");
   const [therapist, setTherapist] = useState(""); 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [packageAmount, setPackageAmount] = useState("");
 
-  // تسجيل للتشخيص
+  // تسجيل للتشخيص وإعادة تعيين الحقول
   useEffect(() => {
     if (isOpen) {
       console.log('المودال مفتوح - المناطق المحددة:', selectedParts);
+      setPackageAmount("");
+      setNotes("");
+      setTherapist("");
+      setSelectedDate(new Date().toISOString().split('T')[0]);
     }
   }, [isOpen, selectedParts]);
 
@@ -455,7 +461,8 @@ function SessionModal({
         date: formattedDate,
         gregorianDate: gregorianDate,
         therapist: therapist.trim(),
-        timestamp: selectedDateObj.toISOString()
+        timestamp: selectedDateObj.toISOString(),
+        packageAmount: client?.hasPackage && packageAmount ? parseFloat(packageAmount) : null
       };
 
       console.log('بيانات الجلسة المراد حفظها:', sessionData);
@@ -531,6 +538,30 @@ function SessionModal({
               <small className="date-note">
                 اختر تاريخ الجلسة (يمكن اختيار أي تاريخ ماضي)
               </small>
+            </div>
+
+            <div className="input-group">
+              <label>المبلغ من החבילה:</label>
+              {client?.hasPackage ? (
+                <>
+                  <input
+                    type="number"
+                    value={packageAmount}
+                    onChange={(e) => setPackageAmount(e.target.value)}
+                    placeholder="أدخل المبلغ..."
+                    className="form-input"
+                    min="0"
+                    step="0.01"
+                  />
+                  <small className="date-note">
+                    المبلغ المدفوع من החבילה لهذه الجلسة
+                  </small>
+                </>
+              ) : (
+                <div className="text-red-500 font-medium text-sm py-2">
+                  ❌ لا توجد חבילה
+                </div>
+              )}
             </div>
           </div>
           
@@ -785,6 +816,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         selectedParts={selectedParts}
         onSave={addSession}
         isProcessing={isProcessing}
+        client={client}
       />
     </div>
   );
