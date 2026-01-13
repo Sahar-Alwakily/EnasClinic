@@ -418,30 +418,62 @@ function SessionModal({
   const [therapist, setTherapist] = useState(""); 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // تسجيل للتشخيص
+  useEffect(() => {
+    if (isOpen) {
+      console.log('المودال مفتوح - المناطق المحددة:', selectedParts);
+    }
+  }, [isOpen, selectedParts]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     
-    // التحقق من وجود مناطق محددة
-    if (!selectedParts || selectedParts.length === 0) {
-      alert('يرجى تحديد منطقة واحدة على الأقل قبل الحفظ');
-      return;
-    }
+    console.log('بدء حفظ الجلسة...', { selectedParts, therapist, notes, selectedDate });
     
-    // تحويل التاريخ المحدد إلى تنسيقات مختلفة
-    const selectedDateObj = new Date(selectedDate);
-    const formattedDate = selectedDateObj.toLocaleDateString('en-GB');
-    const gregorianDate = selectedDate;
-    
-    const sessionData = {
-      notes,
-      parts: Array.isArray(selectedParts) ? [...selectedParts] : [],
-      date: formattedDate,
-      gregorianDate: gregorianDate,
-      therapist: therapist.trim(),
-      timestamp: selectedDateObj.toISOString()
-    };
+    try {
+      // التحقق من وجود مناطق محددة
+      if (!selectedParts || selectedParts.length === 0) {
+        alert('يرجى تحديد منطقة واحدة على الأقل قبل الحفظ');
+        return;
+      }
+      
+      // التحقق من اسم المعالج
+      if (!therapist || therapist.trim() === '') {
+        alert('يرجى إدخال اسم المعالج');
+        return;
+      }
+      
+      // تحويل التاريخ المحدد إلى تنسيقات مختلفة
+      const selectedDateObj = new Date(selectedDate);
+      const formattedDate = selectedDateObj.toLocaleDateString('en-GB');
+      const gregorianDate = selectedDate;
+      
+      const sessionData = {
+        notes: notes || '',
+        parts: Array.isArray(selectedParts) ? [...selectedParts] : [],
+        date: formattedDate,
+        gregorianDate: gregorianDate,
+        therapist: therapist.trim(),
+        timestamp: selectedDateObj.toISOString()
+      };
 
-    onSave(sessionData);
+      console.log('بيانات الجلسة المراد حفظها:', sessionData);
+
+      // استدعاء دالة الحفظ
+      const result = await onSave(sessionData);
+      
+      console.log('نتيجة الحفظ:', result);
+      
+      // إذا كان هناك رسالة خطأ، عرضها
+      if (result && !result.success) {
+        alert(result.message || 'حدث خطأ أثناء حفظ الجلسة');
+      }
+      // ملاحظة: addSession تقوم بإغلاق المودال تلقائياً بعد الحفظ الناجح
+    } catch (error) {
+      console.error('خطأ في حفظ الجلسة:', error);
+      alert('حدث خطأ أثناء حفظ الجلسة. يرجى المحاولة مرة أخرى.');
+    }
   };
 
   if (!isOpen) return null;
@@ -484,7 +516,6 @@ function SessionModal({
                 onChange={(e) => setTherapist(e.target.value)}
                 placeholder="أدخل اسم المعالج..."
                 className="form-input"
-                required
               />
             </div>
 
@@ -525,9 +556,9 @@ function SessionModal({
             <button 
               type="submit" 
               className="btn primary"
-              disabled={isProcessing || selectedParts.length === 0}
+              disabled={isProcessing || !selectedParts || selectedParts.length === 0}
             >
-              {isProcessing ? "جاري الحفظ..." : `حفظ الجلسة (${selectedParts.length} منطقة)`}
+              {isProcessing ? "جاري الحفظ..." : `حفظ الجلسة (${selectedParts?.length || 0} منطقة)`}
             </button>
           </div>
         </form>
