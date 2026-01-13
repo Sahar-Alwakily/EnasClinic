@@ -529,6 +529,26 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                   >
                     ✏️
                   </button>
+                  <button
+                    onClick={() => {
+                      const confirmDelete = window.confirm('هل أنت متأكد من حذف החבילה؟\nسيتم حذف جميع معلومات החבילה.');
+                      if (confirmDelete) {
+                        const patientRef = ref(db, `patients/${patientId}`);
+                        update(patientRef, {
+                          hasPackage: false,
+                          packagePaidAmount: null
+                        }).then(() => {
+                          alert('تم حذف החבילה بنجاح');
+                        }).catch(err => {
+                          alert('حدث خطأ: ' + err.message);
+                        });
+                      }
+                    }}
+                    className="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded transition"
+                    title="حذف החבילה"
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
               <div className="flex items-center justify-between">
