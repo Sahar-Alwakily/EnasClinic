@@ -74,7 +74,10 @@ export default function Dashboard({ user }) {
         let totalSessions = 0;
         let clientsData = [];
         
-        const today = new Date().toISOString().split('T')[0];
+        // الحصول على تاريخ اليوم بصيغ مختلفة للمقارنة
+        const today = new Date();
+        const todayISO = today.toISOString().split('T')[0]; // YYYY-MM-DD
+        const todayGB = today.toLocaleDateString('en-GB'); // DD/MM/YYYY
 
         if (sessionsSnapshot.exists()) {
           const sessionsData = sessionsSnapshot.val();
@@ -85,12 +88,15 @@ export default function Dashboard({ user }) {
             let clientTherapists = new Set();
             let clientAreas = new Set();
             let totalClientSessions = 0;
+            let lastSessionTimestamp = null;
             let lastSessionDate = "";
             let clientPhone = "";
+            let lastSession = null;
 
             clientSessionsList.forEach(session => {
-              // جلسات اليوم
-              if (session.date === today) {
+              // جلسات اليوم - التحقق من جميع التنسيقات
+              const sessionDate = session.gregorianDate || session.date;
+              if (sessionDate === todayISO || sessionDate === todayGB) {
                 todaySessions++;
               }
               
@@ -104,13 +110,30 @@ export default function Dashboard({ user }) {
               
               totalClientSessions++;
               
-              // أحدث جلسة
-              if (!lastSessionDate || session.date > lastSessionDate) {
-                lastSessionDate = session.date;
+              // أحدث جلسة - استخدام timestamp للمقارنة
+              const sessionTimestamp = session.timestamp ? new Date(session.timestamp).getTime() : null;
+              if (sessionTimestamp && (!lastSessionTimestamp || sessionTimestamp > lastSessionTimestamp)) {
+                lastSessionTimestamp = sessionTimestamp;
+                lastSessionDate = session.gregorianDate || session.date || "";
+                lastSession = session;
+              } else if (!lastSessionTimestamp && session.date) {
+                // إذا لم يكن هناك timestamp، استخدم date
+                const sessionDateStr = session.gregorianDate || session.date;
+                if (!lastSessionDate || sessionDateStr > lastSessionDate) {
+                  lastSessionDate = sessionDateStr;
+                  lastSession = session;
+                }
               }
             });
 
             if (clientName) {
+              // ترتيب جلسات العميل من الأحدث إلى الأقدم
+              const sortedSessions = [...clientSessionsList].sort((a, b) => {
+                const timestampA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+                const timestampB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+                return timestampB - timestampA;
+              });
+
               clientsData.push({
                 clientId,
                 clientName,
@@ -119,14 +142,19 @@ export default function Dashboard({ user }) {
                 therapists: Array.from(clientTherapists),
                 areas: Array.from(clientAreas),
                 lastSessionDate,
-                sessions: clientSessionsList // إضافة الجلسات الكاملة
+                lastSession, // إضافة آخر جلسة كاملة
+                sessions: sortedSessions // الجلسات مرتبة من الأحدث إلى الأقدم
               });
             }
           });
         }
 
-        // ترتيب العملاء من الأحدث إلى الأقدم
-        clientsData.sort((a, b) => new Date(b.lastSessionDate) - new Date(a.lastSessionDate));
+        // ترتيب العملاء من الأحدث إلى الأقدم بناءً على timestamp
+        clientsData.sort((a, b) => {
+          const timestampA = a.lastSession?.timestamp ? new Date(a.lastSession.timestamp).getTime() : 0;
+          const timestampB = b.lastSession?.timestamp ? new Date(b.lastSession.timestamp).getTime() : 0;
+          return timestampB - timestampA;
+        });
 
         setStats({
           totalClients,
@@ -344,10 +372,37 @@ export default function Dashboard({ user }) {
                         </div>
                       </div>
 
+                      {/* آخر جلسة */}
+                      {client.lastSession && (
+                        <div className="mb-2 sm:mb-3 p-2 bg-gray-50 rounded-lg">
+                          <div className="text-xs font-semibold text-gray-700 mb-1">آخر جلسة:</div>
+                          <div className="text-xs text-gray-600">
+                            📅 {client.lastSessionDate || 'غير محدد'}
+                          </div>
+                          {client.lastSession.therapist && client.lastSession.therapist !== "غير محدد" && (
+                            <div className="text-xs text-gray-600 mt-1">
+                              👨‍⚕️ {client.lastSession.therapist}
+                            </div>
+                          )}
+                          {client.lastSession.parts && client.lastSession.parts.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {client.lastSession.parts.slice(0, 3).map((part, idx) => (
+                                <span key={idx} className="bg-purple-100 text-purple-700 text-xs px-1.5 py-0.5 rounded">
+                                  {part}
+                                </span>
+                              ))}
+                              {client.lastSession.parts.length > 3 && (
+                                <span className="text-xs text-gray-500">+{client.lastSession.parts.length - 3}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* أزرار الإجراءات */}
                       <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-gray-100 gap-2">
                         <div className="text-xs text-gray-500 flex-1">
-                          آخر جلسة: {client.lastSessionDate}
+                          {client.lastSessionDate ? `آخر جلسة: ${client.lastSessionDate}` : 'لا توجد جلسات'}
                         </div>
                         <div className="flex gap-1">
                           <button 
