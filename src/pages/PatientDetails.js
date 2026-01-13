@@ -440,12 +440,14 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
     return timestampB - timestampA; // الأحدث أولاً
   });
 
-  // حساب الجلسات المستخدمة من החبילה (الجلسات التي لديها packageAmount > 0)
-  const usedSessionsCount = sortedSessions.filter(s => 
-    s.packageAmount !== null && 
-    s.packageAmount !== undefined && 
-    s.packageAmount > 0
-  ).length;
+  // حساب المبلغ المستخدم من החבילה (مجموع المبالغ المدفوعة في الجلسات)
+  const totalUsedAmount = sortedSessions.reduce((sum, session) => {
+    const amount = session.packageAmount || 0;
+    return sum + (typeof amount === 'number' ? amount : parseFloat(amount) || 0);
+  }, 0);
+  
+  // حساب المبلغ المتبقي من החבילה
+  const remainingAmount = Math.max(0, (patient?.packagePaidAmount || 0) - totalUsedAmount);
 
   // دالة لتنسيق التاريخ
   const formatDate = (session) => {
@@ -505,21 +507,17 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                 <span className="text-sm font-bold text-green-600">لديه חבילה</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">عدد الجلسات في החבילה:</span>
-                <span className="text-sm font-bold text-purple-600">{patient.packageSessions || 0}</span>
+                <span className="text-sm font-semibold text-gray-700">مبلغ החבילה:</span>
+                <span className="text-sm font-bold text-purple-600">{patient.packagePaidAmount || 0} ₪</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">المبلغ المدفوع:</span>
-                <span className="text-sm font-bold text-blue-600">{patient.packagePaidAmount || 0} ₪</span>
+                <span className="text-sm font-semibold text-gray-700">المبلغ المستخدم:</span>
+                <span className="text-sm font-bold text-red-600">{totalUsedAmount.toFixed(2)} ₪</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">الجلسات المستخدمة:</span>
-                <span className="text-sm font-bold text-gray-600">{usedSessionsCount}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">الجلسات المتبقية:</span>
+                <span className="text-sm font-semibold text-gray-700">المبلغ المتبقي:</span>
                 <span className="text-sm font-bold text-orange-600">
-                  {Math.max(0, (patient.packageSessions || 0) - usedSessionsCount)}
+                  {remainingAmount.toFixed(2)} ₪
                 </span>
               </div>
             </div>
@@ -530,19 +528,19 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                 onClick={() => {
                   const hasPackage = window.confirm('هل تريد إضافة חבילה لهذا العميل؟');
                   if (hasPackage) {
-                    const sessionsCount = prompt('كم عدد الجلسات في החבילה؟');
-                    const paidAmount = prompt('كم المبلغ المدفوع للחבילה؟');
-                    if (sessionsCount && paidAmount) {
+                    const paidAmount = prompt('كم مبلغ החבילה بالشيكل؟ (مثلاً: 3000)');
+                    if (paidAmount && !isNaN(parseFloat(paidAmount))) {
                       const patientRef = ref(db, `patients/${patientId}`);
                       update(patientRef, {
                         hasPackage: true,
-                        packageSessions: parseInt(sessionsCount),
                         packagePaidAmount: parseFloat(paidAmount)
                       }).then(() => {
                         alert('تم إضافة החבילה بنجاح');
                       }).catch(err => {
                         alert('حدث خطأ: ' + err.message);
                       });
+                    } else {
+                      alert('يرجى إدخال مبلغ صحيح');
                     }
                   }
                 }}
