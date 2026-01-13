@@ -7,11 +7,23 @@ export default function AddSession() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const patient = location.state?.patient || { 
+  // الحصول على patient من location.state
+  const patientFromState = location.state?.patient;
+  
+  // التأكد من وجود idNumber بشكل صحيح
+  const patient = patientFromState ? {
+    ...patientFromState,
+    // التأكد من وجود idNumber - إذا لم يكن موجوداً، استخدم patientId من location.state
+    idNumber: patientFromState.idNumber || location.state?.patientId || patientFromState.id || '0000'
+  } : { 
     fullName: 'عميل تجريبي', 
-    idNumber: '0000',
+    idNumber: location.state?.patientId || '0000',
     phone: '0000000000'
   };
+  
+  // تسجيل للتشخيص
+  console.log('بيانات المريض في AddSession:', patient);
+  console.log('idNumber:', patient.idNumber);
 
   const [sessions, setSessions] = useState([]);
   const [showAllSessions, setShowAllSessions] = useState(false);
@@ -27,6 +39,41 @@ export default function AddSession() {
   );
 
   const displayedSessions = showAllSessions ? sortedSessions : sortedSessions.slice(0, 5);
+
+  // التحقق من وجود patient و idNumber قبل عرض الصفحة
+  if (!patient || !patient.idNumber || patient.idNumber === '0000') {
+    return (
+      <div className="add-session-page">
+        <div className="page-header">
+          <button onClick={() => navigate(-1)} className="back-button">
+            ← العودة
+          </button>
+          <h1 className="page-title">خطأ</h1>
+        </div>
+        <div style={{ padding: '40px 20px', textAlign: 'center', color: '#EF4444' }}>
+          <p style={{ fontSize: '18px', marginBottom: '16px' }}>⚠️ بيانات المريض غير موجودة</p>
+          <p style={{ fontSize: '14px', marginBottom: '24px', color: '#718096' }}>
+            يرجى العودة واختيار المريض من قائمة العملاء أولاً
+          </p>
+          <button 
+            onClick={() => navigate('/customers')}
+            style={{
+              background: 'linear-gradient(135deg, #8B5FBF 0%, #6A82FB 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            الذهاب إلى قائمة العملاء
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="add-session-page">

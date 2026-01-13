@@ -625,8 +625,18 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   );
 
   const addSession = async (sessionData) => {
-    if (!client?.idNumber)
-      return { success: false, message: "client id missing" };
+    // التحقق من وجود client و idNumber
+    if (!client) {
+      console.error('Client is missing:', client);
+      return { success: false, message: "بيانات المريض غير موجودة. يرجى العودة واختيار المريض مرة أخرى." };
+    }
+    
+    if (!client.idNumber) {
+      console.error('Client idNumber is missing:', client);
+      return { success: false, message: "رقم هوية المريض غير موجود. يرجى العودة واختيار المريض مرة أخرى." };
+    }
+    
+    console.log('حفظ الجلسة للمريض:', { idNumber: client.idNumber, fullName: client.fullName });
     setIsProcessing(true);
     try {
       const refSessions = ref(db, `sessions/${client.idNumber}`);

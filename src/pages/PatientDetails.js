@@ -135,8 +135,9 @@ export default function PatientDetails() {
                   state: { 
                     patient: {
                       ...patient,
-                      idNumber: patientId
-                    }
+                      idNumber: patientId || patient?.idNumber
+                    },
+                    patientId: patientId || patient?.idNumber // إضافة كـ backup
                   } 
                 })}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium hover:opacity-90 transition shadow-sm whitespace-nowrap"
