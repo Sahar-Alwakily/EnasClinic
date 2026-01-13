@@ -418,6 +418,9 @@ export default function PatientDetails() {
 function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patientId, patient, navigate, onSessionDeleted }) {
   const [editingSession, setEditingSession] = useState(null);
   const [allAreas, setAllAreas] = useState([]);
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [packageAmount, setPackageAmount] = useState("");
+  const [packagePayment, setPackagePayment] = useState("");
 
   // جمع جميع المناطق من جميع الجلسات
   useEffect(() => {
@@ -433,6 +436,17 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
     setAllAreas(Array.from(areasSet).sort());
   }, [sessions, getSessionAreas]);
 
+  // ملء الحقول عند فتح modal للتعديل
+  useEffect(() => {
+    if (showPackageModal && patient?.hasPackage) {
+      setPackageAmount(patient.packagePaidAmount?.toString() || "");
+      setPackagePayment("");
+    } else if (showPackageModal && !patient?.hasPackage) {
+      setPackageAmount("");
+      setPackagePayment("");
+    }
+  }, [showPackageModal, patient]);
+
   // ترتيب الجلسات من الأحدث إلى الأقدم (الأحدث أولاً)
   const sortedSessions = [...sessions].sort((a, b) => {
     const timestampA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
@@ -440,8 +454,15 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
     return timestampB - timestampA; // الأحدث أولاً
   });
 
-  // حساب المبلغ المستخدم من החבילה (مجموع المبالغ المدفوعة في الجلسات)
+  // حساب المبلغ المستخدم من החבילה (مجموع المبالغ المدفوعة في الجلسات بعد إنشاء החבילה)
+  const packageCreatedAt = patient?.packageCreatedAt ? new Date(patient.packageCreatedAt).getTime() : 0;
+  
   const totalUsedAmount = sortedSessions.reduce((sum, session) => {
+    // حساب فقط الجلسات التي تمت بعد إنشاء החבילה
+    const sessionTimestamp = session.timestamp ? new Date(session.timestamp).getTime() : 0;
+    if (packageCreatedAt > 0 && sessionTimestamp < packageCreatedAt) {
+      return sum; // تجاهل الجلسات قبل إنشاء החבילה
+    }
     const amount = session.packageAmount || 0;
     return sum + (typeof amount === 'number' ? amount : parseFloat(amount) || 0);
   }, 0);
@@ -489,18 +510,94 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
     });
   };
 
+  // دالة لحفظ החבילה
+  const handleSavePackage = () => {
+    if (!packageAmount || isNaN(parseFloat(packageAmount))) {
+      alert('يرجى إدخال مبلغ صحيح');
+      return;
+    }
+
+    const patientRef = ref(db, `patients/${patientId}`);
+    const isEditing = patient?.hasPackage;
+    
+    const updates = {
+      hasPackage: true,
+      packagePaidAmount: parseFloat(packageAmount),
+      packageCreatedAt: isEditing ? (patient.packageCreatedAt || new Date().toISOString()) : new Date().toISOString()
+    };
+
+    // إذا كان هناك دفعة، نخصمها من المبلغ
+    if (packagePayment && !isNaN(parseFloat(packagePayment))) {
+      updates.packagePaidAmount = parseFloat(packageAmount) - parseFloat(packagePayment);
+    }
+
+    // إذا كان تعديل، نحافظ على packageCreatedAt الأصلي
+    // إذا كان جديد، نضيف packageCreatedAt جديد
+
+    update(patientRef, updates).then(() => {
+      alert(isEditing ? 'تم تحديث החבילה بنجاح' : 'تم إضافة החבילה بنجاح');
+      setShowPackageModal(false);
+      setPackageAmount("");
+      setPackagePayment("");
+    }).catch(err => {
+      alert('حدث خطأ: ' + err.message);
+    });
+  };
+
   return (
     <div className="space-y-3 md:space-y-4 lg:space-y-6" style={{ width: '100%' }}>
-      {/* قسم إعدادات الجلسات */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
-        <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
-          <span>⚙️</span>
-          <span>إعدادات الجلسات</span>
-        </h3>
-        
-        {/* معلومات החבילה */}
-        <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
-          {patient?.hasPackage ? (
+      {/* قسم إضافة החבילה - يظهر قبل الجدول إذا لم تكن هناك جلسات أو لا توجد חבילה */}
+      {(sortedSessions.length === 0 || !patient?.hasPackage) && (
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
+          <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
+            <span>📦</span>
+            <span>إضافة חבילה</span>
+          </h3>
+          {!patient?.hasPackage ? (
+            <div className="text-center py-4">
+              <div className="text-red-600 font-semibold mb-3">❌ لا توجد חבילה</div>
+              <button
+                onClick={() => setShowPackageModal(true)}
+                className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition"
+              >
+                ➕ إضافة חבילה جديدة
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">📦 الحالة:</span>
+                  <span className="text-sm font-bold text-green-600">لديه חבילה</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">مبلغ החבילה:</span>
+                  <span className="text-sm font-bold text-purple-600">{patient.packagePaidAmount || 0} ₪</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">المبلغ المدفوع:</span>
+                  <span className="text-sm font-bold text-red-600">{totalUsedAmount.toFixed(2)} ₪</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">المبلغ المتبقي:</span>
+                  <span className="text-sm font-bold text-orange-600">{remainingAmount.toFixed(2)} ₪</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* قسم إعدادات الجلسات - يظهر فقط إذا كانت هناك جلسات ولديه חבילה */}
+      {sortedSessions.length > 0 && patient?.hasPackage && (
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
+          <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
+            <span>⚙️</span>
+            <span>إعدادات الجلسات</span>
+          </h3>
+          
+          {/* معلومات החבילה */}
+          <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-700">📦 الحالة:</span>
@@ -511,19 +608,7 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-purple-600">{patient.packagePaidAmount || 0} ₪</span>
                   <button
-                    onClick={() => {
-                      const newAmount = prompt('أدخل مبلغ החבילה الجديد:', patient.packagePaidAmount || 0);
-                      if (newAmount && !isNaN(parseFloat(newAmount))) {
-                        const patientRef = ref(db, `patients/${patientId}`);
-                        update(patientRef, {
-                          packagePaidAmount: parseFloat(newAmount)
-                        }).then(() => {
-                          alert('تم تحديث مبلغ החבילה بنجاح');
-                        }).catch(err => {
-                          alert('حدث خطأ: ' + err.message);
-                        });
-                      }
-                    }}
+                    onClick={() => setShowPackageModal(true)}
                     className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded transition"
                     title="تعديل مبلغ החבילה"
                   >
@@ -536,7 +621,8 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                         const patientRef = ref(db, `patients/${patientId}`);
                         update(patientRef, {
                           hasPackage: false,
-                          packagePaidAmount: null
+                          packagePaidAmount: null,
+                          packageCreatedAt: null
                         }).then(() => {
                           alert('تم حذف החבילה بنجاح');
                         }).catch(err => {
@@ -562,37 +648,9 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                 </span>
               </div>
             </div>
-          ) : (
-            <div className="text-center">
-              <div className="text-red-600 font-semibold mb-2">❌ لا توجد חבילה</div>
-              <button
-                onClick={() => {
-                  const hasPackage = window.confirm('هل تريد إضافة חבילה لهذا العميل؟');
-                  if (hasPackage) {
-                    const paidAmount = prompt('كم مبلغ החבילה بالشيكل؟ (مثلاً: 3000)');
-                    if (paidAmount && !isNaN(parseFloat(paidAmount))) {
-                      const patientRef = ref(db, `patients/${patientId}`);
-                      update(patientRef, {
-                        hasPackage: true,
-                        packagePaidAmount: parseFloat(paidAmount)
-                      }).then(() => {
-                        alert('تم إضافة החבילה بنجاح');
-                      }).catch(err => {
-                        alert('حدث خطأ: ' + err.message);
-                      });
-                    } else {
-                      alert('يرجى إدخال مبلغ صحيح');
-                    }
-                  }
-                }}
-                className="mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-              >
-                ➕ إضافة חבילה للمستقبل
-              </button>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* الجدول - تصميم متجاوب مع تمرير جانبي فقط للجدول */}
       <div className="w-full" style={{ overflowX: 'hidden', overflowY: 'visible' }}>
@@ -766,6 +824,101 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
           )}
         </div>
       </div>
+
+      {/* Modal لإضافة/تعديل החבילה */}
+      {showPackageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowPackageModal(false)}>
+          <div 
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-4 md:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg md:text-xl font-bold text-gray-800">📦 {patient?.hasPackage ? 'تعديل' : 'إضافة'} חבילה</h3>
+              <button
+                onClick={() => {
+                  setShowPackageModal(false);
+                  setPackageAmount("");
+                  setPackagePayment("");
+                }}
+                className="text-gray-400 hover:text-gray-600 text-xl transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">مبلغ החבילה (₪):</label>
+                <input
+                  type="number"
+                  value={packageAmount}
+                  onChange={(e) => setPackageAmount(e.target.value)}
+                  placeholder="مثلاً: 3000"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">المبلغ المدفوع (اختياري):</label>
+                <input
+                  type="number"
+                  value={packagePayment}
+                  onChange={(e) => setPackagePayment(e.target.value)}
+                  placeholder="إذا دفعت جزء من החבילה، أدخل المبلغ"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  min="0"
+                  step="0.01"
+                />
+                <small className="text-xs text-gray-500 mt-1 block">
+                  إذا أدخلت مبلغاً، سيتم خصمه من مبلغ החבילה
+                </small>
+              </div>
+
+              {packageAmount && packagePayment && !isNaN(parseFloat(packageAmount)) && !isNaN(parseFloat(packagePayment)) && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-sm text-gray-700">
+                    <div className="flex justify-between mb-1">
+                      <span>مبلغ החבילה:</span>
+                      <span className="font-bold">{parseFloat(packageAmount).toFixed(2)} ₪</span>
+                    </div>
+                    <div className="flex justify-between mb-1">
+                      <span>المبلغ المدفوع:</span>
+                      <span className="font-bold text-red-600">-{parseFloat(packagePayment).toFixed(2)} ₪</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-blue-200">
+                      <span className="font-semibold">المبلغ المتبقي:</span>
+                      <span className="font-bold text-green-600">
+                        {(parseFloat(packageAmount) - parseFloat(packagePayment)).toFixed(2)} ₪
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setShowPackageModal(false);
+                    setPackageAmount("");
+                    setPackagePayment("");
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={handleSavePackage}
+                  className="flex-1 bg-green-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition"
+                >
+                  حفظ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
