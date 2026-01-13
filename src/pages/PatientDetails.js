@@ -117,19 +117,28 @@ export default function PatientDetails() {
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
-        .table-container {
+        /* منع التمرير الأفقي للصفحة كاملة - فقط في هذه الصفحة */
+        .patient-details-page {
+          overflow-x: hidden !important;
+          width: 100% !important;
+          max-width: 100vw !important;
+        }
+        
+        /* الجدول فقط قابل للتمرير */
+        .sessions-table-wrapper {
           overflow-x: auto !important;
           overflow-y: visible !important;
-          width: 100%;
-          max-width: 100%;
+          width: 100% !important;
           -webkit-overflow-scrolling: touch;
-          touch-action: pan-x;
+          touch-action: pan-x pinch-zoom;
+          position: relative;
         }
-        .table-container * {
+        
+        .sessions-table-wrapper * {
           max-width: none;
         }
       `}</style>
-      <div className="min-h-screen bg-gray-50 md:bg-gray-100 pb-6 md:pb-20" style={{ overflowX: 'hidden', width: '100%', maxWidth: '100%' }}>
+      <div className="min-h-screen bg-gray-50 md:bg-gray-100 pb-6 md:pb-20 patient-details-page">
         {/* HEADER */}
         <div className="bg-white shadow-sm md:shadow-md rounded-b-2xl md:rounded-b-3xl pb-4 md:pb-6">
           <div className="p-3 md:p-4 flex items-center justify-between gap-2">
@@ -206,7 +215,7 @@ export default function PatientDetails() {
         </div>
 
       {/* CONTENT */}
-      <div className="p-3 md:p-4 lg:p-6 max-w-7xl mx-auto" style={{ overflowX: 'hidden', width: '100%', maxWidth: '100%' }}>
+      <div className="p-3 md:p-4 lg:p-6 max-w-7xl mx-auto" style={{ width: '100%', maxWidth: '100%' }}>
         {/* INFO */}
         {activeSection === "info" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6">
@@ -472,7 +481,7 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
   };
 
   return (
-    <div className="space-y-3 md:space-y-4 lg:space-y-6" style={{ overflowX: 'hidden', width: '100%', maxWidth: '100%' }}>
+    <div className="space-y-3 md:space-y-4 lg:space-y-6" style={{ width: '100%' }}>
       {/* قسم الاختيار */}
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
         <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
@@ -499,21 +508,23 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
       </div>
 
       {/* الجدول - تصميم متجاوب مع تمرير جانبي فقط للجدول */}
-      <div className="relative w-full max-w-full">
+      <div className="w-full" style={{ overflowX: 'hidden', overflowY: 'visible' }}>
         {/* مؤشر التمرير على الموبايل */}
-        <div className="absolute top-2 right-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs px-3 py-1.5 rounded-full shadow-lg md:hidden z-20 pointer-events-none animate-pulse">
-          ← اسحب للتمرير →
+        <div className="relative mb-2 md:hidden">
+          <div className="absolute right-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs px-3 py-1.5 rounded-full shadow-lg z-20 pointer-events-none animate-pulse">
+            ← اسحب للتمرير →
+          </div>
         </div>
-        {/* Container للجدول فقط - قابل للتمرير أفقيًا */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 scrollbar-hide table-container">
+        {/* Wrapper للجدول فقط - قابل للتمرير أفقيًا */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 sessions-table-wrapper">
           {sortedSessions.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-2">📭</div>
               <p className="text-gray-500 text-sm">لا توجد جلسات</p>
             </div>
           ) : (
-            <div className="inline-block" style={{ minWidth: '100%' }}>
-              <table className="border-collapse" style={{ minWidth: '600px', width: '100%' }}>
+            <div style={{ display: 'inline-block', minWidth: '100%' }}>
+              <table className="w-full border-collapse" style={{ minWidth: '600px' }}>
               <thead>
                 <tr className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
                   <th className="border border-gray-300 px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm md:text-base font-bold text-right sticky right-0 bg-gradient-to-r from-purple-600 to-blue-600 z-10 shadow-lg min-w-[80px] sm:min-w-[100px] md:min-w-[120px]">
