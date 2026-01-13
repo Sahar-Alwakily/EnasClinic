@@ -546,8 +546,8 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
 
   return (
     <div className="space-y-3 md:space-y-4 lg:space-y-6" style={{ width: '100%' }}>
-      {/* قسم إضافة החבילה - يظهر قبل الجدول إذا لم تكن هناك جلسات أو لا توجد חבילה */}
-      {(sortedSessions.length === 0 || !patient?.hasPackage) && (
+      {/* قسم إضافة החבילה - يظهر قبل الجدول إذا لم تكن هناك جلسات */}
+      {sortedSessions.length === 0 && (
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
           <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
             <span>📦</span>
@@ -572,7 +572,37 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-gray-700">مبلغ החבילה:</span>
-                  <span className="text-sm font-bold text-purple-600">{patient.packagePaidAmount || 0} ₪</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-purple-600">{patient.packagePaidAmount || 0} ₪</span>
+                    <button
+                      onClick={() => setShowPackageModal(true)}
+                      className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded transition"
+                      title="تعديل مبلغ החבילה"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => {
+                        const confirmDelete = window.confirm('هل أنت متأكد من حذف החבילה؟\nسيتم حذف جميع معلومات החבילה.');
+                        if (confirmDelete) {
+                          const patientRef = ref(db, `patients/${patientId}`);
+                          update(patientRef, {
+                            hasPackage: false,
+                            packagePaidAmount: null,
+                            packageCreatedAt: null
+                          }).then(() => {
+                            alert('تم حذف החבילה بنجاح');
+                          }).catch(err => {
+                            alert('حدث خطأ: ' + err.message);
+                          });
+                        }
+                      }}
+                      className="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded transition"
+                      title="حذف החבילה"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-gray-700">المبلغ المدفوع:</span>
