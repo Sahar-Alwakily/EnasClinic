@@ -487,65 +487,32 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
         </div>
       </div>
 
-      {/* الجدول - تصميم متجاوب */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-        {/* للشاشات الصغيرة - عرض بطاقات */}
-        <div className="block md:hidden">
+      {/* الجدول - تصميم متجاوب مع تمرير جانبي */}
+      <div className="relative">
+        {/* مؤشر التمرير على الموبايل */}
+        <div className="absolute top-2 right-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs px-3 py-1.5 rounded-full shadow-lg md:hidden z-20 pointer-events-none animate-pulse">
+          ← اسحب للتمرير →
+        </div>
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-x-auto scrollbar-hide">
           {sortedSessions.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-2">📭</div>
               <p className="text-gray-500 text-sm">لا توجد جلسات</p>
             </div>
           ) : (
-            sortedSessions.map((session, index) => (
-              <div key={session.id || index} className="border-b border-gray-200 last:border-b-0 p-3 sm:p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                    <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap">جلسة {index + 1}</span>
-                    <span className="text-xs text-gray-600">{formatDate(session)}</span>
-                  </div>
-                  <button
-                    onClick={() => handleEdit(session)}
-                    className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50 transition self-start sm:self-auto"
-                  >
-                    ✏️ تعديل
-                  </button>
-                </div>
-                <div className="text-xs sm:text-sm text-gray-600 mb-2">👨‍⚕️ {session.therapist || 'غير محدد'}</div>
-                <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  {allAreas.length > 0 ? (
-                    allAreas.map((area, areaIndex) => (
-                      hasArea(session, area) && (
-                        <div key={areaIndex} className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded">
-                          <span className="text-green-600 font-bold text-sm">✓</span>
-                          <span className="text-xs text-gray-700">{area}</span>
-                        </div>
-                      )
-                    ))
-                  ) : (
-                    <span className="text-xs text-gray-400">لا توجد مناطق</span>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* للشاشات المتوسطة والكبيرة - عرض جدول */}
-        <div className="hidden md:block overflow-x-auto scrollbar-hide">
-          <div className="min-w-full">
-            <table className="w-full border-collapse">
+            <div className="min-w-full inline-block">
+              <table className="w-full border-collapse min-w-[600px]">
               <thead>
                 <tr className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-                  <th className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold text-right sticky right-0 bg-gradient-to-r from-purple-600 to-blue-600 z-10 shadow-lg min-w-[100px]">
+                  <th className="border border-gray-300 px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm md:text-base font-bold text-right sticky right-0 bg-gradient-to-r from-purple-600 to-blue-600 z-10 shadow-lg min-w-[80px] sm:min-w-[100px] md:min-w-[120px]">
                     الجلسة
                   </th>
                   {sortedSessions.map((session, index) => (
                     <th 
                       key={session.id || index} 
-                      className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold min-w-[90px] sm:min-w-[100px] md:min-w-[120px] lg:min-w-[140px] relative group"
+                      className="border border-gray-300 px-1.5 sm:px-2 md:px-3 py-2 sm:py-3 text-xs sm:text-sm md:text-base font-bold min-w-[70px] sm:min-w-[80px] md:min-w-[100px] lg:min-w-[120px] relative group"
                     >
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="flex flex-col items-center gap-0.5 sm:gap-1">
                         <span>{index + 1}</span>
                         <button
                           onClick={() => handleEdit(session)}
@@ -562,13 +529,13 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
               <tbody>
                 {/* الصف الأول: التاريخ */}
                 <tr className="bg-gray-50 hover:bg-gray-100 transition">
-                  <td className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold text-gray-700 sticky right-0 bg-gray-50 z-10 shadow-lg">
+                  <td className="border border-gray-300 px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm md:text-base font-bold text-gray-700 sticky right-0 bg-gray-50 z-10 shadow-lg">
                     📅 التاريخ
                   </td>
                   {sortedSessions.map((session, index) => (
                     <td 
                       key={`date-${session.id || index}`} 
-                      className="border border-gray-300 px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm text-center font-medium"
+                      className="border border-gray-300 px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-xs sm:text-sm md:text-base text-center font-medium"
                     >
                       {formatDate(session)}
                     </td>
@@ -577,15 +544,15 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
 
                 {/* الصف الثاني: اسم المعالج */}
                 <tr className="bg-white hover:bg-gray-50 transition">
-                  <td className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold text-gray-700 sticky right-0 bg-white z-10 shadow-lg">
+                  <td className="border border-gray-300 px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm md:text-base font-bold text-gray-700 sticky right-0 bg-white z-10 shadow-lg">
                     👨‍⚕️ المعالج
                   </td>
                   {sortedSessions.map((session, index) => (
                     <td 
                       key={`therapist-${session.id || index}`} 
-                      className="border border-gray-300 px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm text-center"
+                      className="border border-gray-300 px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-xs sm:text-sm md:text-base text-center"
                     >
-                      <span className="truncate block" title={session.therapist || 'غير محدد'}>
+                      <span className="truncate block max-w-[80px] sm:max-w-[100px] md:max-w-none mx-auto" title={session.therapist || 'غير محدد'}>
                         {session.therapist || 'غير محدد'}
                       </span>
                     </td>
@@ -596,16 +563,16 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                 {allAreas.length > 0 ? (
                   allAreas.map((area, areaIndex) => (
                     <tr key={`area-${areaIndex}`} className={areaIndex % 2 === 0 ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white hover:bg-gray-50'} style={{ transition: 'background-color 0.2s' }}>
-                      <td className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-700 sticky right-0 z-10 shadow-lg" style={{ backgroundColor: areaIndex % 2 === 0 ? '#f9fafb' : '#ffffff' }}>
+                      <td className="border border-gray-300 px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm md:text-base font-medium text-gray-700 sticky right-0 z-10 shadow-lg whitespace-nowrap" style={{ backgroundColor: areaIndex % 2 === 0 ? '#f9fafb' : '#ffffff' }}>
                         {area}
                       </td>
                       {sortedSessions.map((session, sessionIndex) => (
                         <td 
                           key={`cell-${areaIndex}-${session.id || sessionIndex}`} 
-                          className="border border-gray-300 px-1 sm:px-2 py-2 sm:py-3 text-center"
+                          className="border border-gray-300 px-1 sm:px-2 md:px-3 py-2 sm:py-3 text-center"
                         >
                           {hasArea(session, area) ? (
-                            <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 bg-green-100 text-green-700 rounded-full font-bold text-xs sm:text-sm">✓</span>
+                            <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 bg-green-100 text-green-700 rounded-full font-bold text-xs sm:text-sm md:text-base">✓</span>
                           ) : (
                             <span className="text-gray-300 text-xs">-</span>
                           )}
@@ -615,7 +582,7 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={sortedSessions.length + 1} className="border border-gray-300 px-3 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                    <td colSpan={sortedSessions.length + 1} className="border border-gray-300 px-3 py-4 text-center text-gray-500 text-xs sm:text-sm md:text-base">
                       لا توجد مناطق محددة
                     </td>
                   </tr>
@@ -623,6 +590,7 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
               </tbody>
             </table>
           </div>
+        )}
         </div>
       </div>
 
