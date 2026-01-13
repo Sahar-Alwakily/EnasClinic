@@ -614,16 +614,16 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                 </div>
               </div>
             </div>
-            {/* زر إضافة חבילה جديدة - يظهر دائماً إذا لم تكن هناك جلسات */}
-            <div className="text-center mt-3">
-              <button
-                onClick={() => setShowPackageModal(true)}
-                className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition"
-              >
-                ➕ إضافة חבילה جديدة
-              </button>
-            </div>
           )}
+          {/* زر إضافة חבילה جديدة - يظهر دائماً إذا لم تكن هناك جلسات */}
+          <div className="text-center mt-3">
+            <button
+              onClick={() => setShowPackageModal(true)}
+              className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition"
+            >
+              ➕ إضافة חבילה جديدة
+            </button>
+          </div>
         </div>
       )}
 
