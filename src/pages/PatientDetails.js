@@ -487,13 +487,14 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
         </div>
       </div>
 
-      {/* الجدول - تصميم متجاوب مع تمرير جانبي */}
-      <div className="relative">
+      {/* الجدول - تصميم متجاوب مع تمرير جانبي فقط للجدول */}
+      <div className="relative w-full">
         {/* مؤشر التمرير على الموبايل */}
         <div className="absolute top-2 right-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs px-3 py-1.5 rounded-full shadow-lg md:hidden z-20 pointer-events-none animate-pulse">
           ← اسحب للتمرير →
         </div>
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-x-auto scrollbar-hide">
+        {/* Container للجدول فقط - قابل للتمرير أفقيًا */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-x-auto overflow-y-visible scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
           {sortedSessions.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-2">📭</div>
