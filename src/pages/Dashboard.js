@@ -192,6 +192,28 @@ export default function Dashboard({ user }) {
     });
   };
 
+  // دالة لتنسيق التاريخ للعرض
+  const formatDateForDisplay = (dateStr) => {
+    if (!dateStr) return 'غير محدد';
+    
+    try {
+      // إذا كان بصيغة YYYY-MM-DD
+      if (dateStr.includes('-') && dateStr.length === 10) {
+        const [year, month, day] = dateStr.split('-');
+        return `${day}/${month}/${year}`;
+      }
+      
+      // إذا كان بصيغة DD/MM/YYYY
+      if (dateStr.includes('/')) {
+        return dateStr;
+      }
+      
+      return dateStr;
+    } catch (error) {
+      return dateStr;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
@@ -377,7 +399,7 @@ export default function Dashboard({ user }) {
                         <div className="mb-2 sm:mb-3 p-2 bg-gray-50 rounded-lg">
                           <div className="text-xs font-semibold text-gray-700 mb-1">آخر جلسة:</div>
                           <div className="text-xs text-gray-600">
-                            📅 {client.lastSessionDate || 'غير محدد'}
+                            📅 {formatDateForDisplay(client.lastSessionDate)}
                           </div>
                           {client.lastSession.therapist && client.lastSession.therapist !== "غير محدد" && (
                             <div className="text-xs text-gray-600 mt-1">
@@ -402,7 +424,7 @@ export default function Dashboard({ user }) {
                       {/* أزرار الإجراءات */}
                       <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-gray-100 gap-2">
                         <div className="text-xs text-gray-500 flex-1">
-                          {client.lastSessionDate ? `آخر جلسة: ${client.lastSessionDate}` : 'لا توجد جلسات'}
+                          {client.lastSessionDate ? `آخر جلسة: ${formatDateForDisplay(client.lastSessionDate)}` : 'لا توجد جلسات'}
                         </div>
                         <div className="flex gap-1">
                           <button 
