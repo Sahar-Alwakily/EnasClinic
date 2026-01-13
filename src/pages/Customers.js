@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ref, onValue } from "firebase/database";
+import { ref, onValue, remove } from "firebase/database";
 import { db } from "../firebaseConfig";
 
 export default function Customers() {
@@ -27,11 +27,22 @@ export default function Customers() {
     return () => unsubscribe(); // تنظيف عند الخروج
   }, []);
 
-  const deleteClient = (id) => {
-    if (window.confirm("هل أنت متأكد من حذف هذا العميل؟")) {
-      // حذف من Firebase
-      const clientRef = ref(db, `patients/${id}`);
-      clientRef.remove().catch((err) => alert("حدث خطأ: " + err));
+  const deleteClient = async (id) => {
+    if (window.confirm("هل أنت متأكد من حذف هذا العميل؟\nسيتم حذف جميع بيانات العميل بما في ذلك الجلسات.")) {
+      try {
+        // حذف العميل من Firebase
+        const clientRef = ref(db, `patients/${id}`);
+        await remove(clientRef);
+        
+        // حذف جميع جلسات العميل
+        const sessionsRef = ref(db, `sessions/${id}`);
+        await remove(sessionsRef);
+        
+        alert("✅ تم حذف العميل بنجاح");
+      } catch (err) {
+        console.error("Error deleting client:", err);
+        alert("❌ حدث خطأ أثناء حذف العميل: " + err.message);
+      }
     }
   };
 
