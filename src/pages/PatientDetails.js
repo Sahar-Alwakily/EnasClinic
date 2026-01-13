@@ -388,6 +388,80 @@ export default function PatientDetails() {
         {/* SESSIONS */}
         {activeSection === "sessions" && (
           <div className="space-y-3">
+            {/* قسم החבילה - يظهر دائماً في تبويب الجلسات */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
+              <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
+                <span>📦</span>
+                <span>معلومات החבילה</span>
+              </h3>
+              {patient?.hasPackage ? (
+                <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">📦 الحالة:</span>
+                      <span className="text-sm font-bold text-green-600">لديه חבילה</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">مبلغ החבילה:</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-purple-600">{patient.packagePaidAmount || 0} ₪</span>
+                        <button
+                          onClick={() => setShowPackageModal(true)}
+                          className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded transition"
+                          title="تعديل مبلغ החבילה"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => {
+                            const confirmDelete = window.confirm('هل أنت متأكد من حذف החבילה؟\nسيتم حذف جميع معلومات החבילה.');
+                            if (confirmDelete) {
+                              const patientRef = ref(db, `patients/${patientId}`);
+                              update(patientRef, {
+                                hasPackage: false,
+                                packagePaidAmount: null,
+                                packageCreatedAt: null
+                              }).then(() => {
+                                alert('تم حذف החבילה بنجاح');
+                              }).catch(err => {
+                                alert('حدث خطأ: ' + err.message);
+                              });
+                            }
+                          }}
+                          className="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded transition"
+                          title="حذف החבילה"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                    {sessions.length > 0 && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-gray-700">المبلغ المدفوع:</span>
+                          <span className="text-sm font-bold text-red-600">{totalUsedAmount.toFixed(2)} ₪</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-gray-700">المبلغ المتبقي:</span>
+                          <span className="text-sm font-bold text-orange-600">{remainingAmount.toFixed(2)} ₪</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <div className="text-red-600 font-semibold mb-3">❌ لا توجد חבילה</div>
+                  <button
+                    onClick={() => setShowPackageModal(true)}
+                    className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition"
+                  >
+                    ➕ إضافة חבילה جديدة
+                  </button>
+                </div>
+              )}
+            </div>
+
             {sessions.length === 0 ? (
               <div className="text-center py-8 md:py-12">
                 <div className="text-4xl md:text-5xl mb-2 md:mb-3">📭</div>
