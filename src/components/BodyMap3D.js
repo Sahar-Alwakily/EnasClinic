@@ -462,7 +462,7 @@ function SessionModal({
         gregorianDate: gregorianDate,
         therapist: therapist.trim(),
         timestamp: selectedDateObj.toISOString(),
-        packageAmount: client?.hasPackage && packageAmount ? parseFloat(packageAmount) : null
+        packageAmount: client?.hasPackage && packageAmount ? parseFloat(packageAmount) : (client?.hasPackage ? 0 : null)
       };
 
       console.log('بيانات الجلسة المراد حفظها:', sessionData);
@@ -690,9 +690,11 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         sessionId: sessionId,
         areasCount: partsToSave.length,
         areas: partsToSave,
-        therapist: sessionData.therapist || "غير محدد"
+        therapist: sessionData.therapist || "غير محدد",
+        packageAmount: sessionData.packageAmount !== undefined ? sessionData.packageAmount : null
       };
       
+      console.log('حفظ الجلسة مع packageAmount:', toSave.packageAmount);
       await set(newRef, toSave);
       onSaveSession?.(toSave);
       

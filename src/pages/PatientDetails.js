@@ -433,12 +433,19 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
     setAllAreas(Array.from(areasSet).sort());
   }, [sessions, getSessionAreas]);
 
-  // ترتيب الجلسات من الأحدث إلى الأقدم
+  // ترتيب الجلسات من الأحدث إلى الأقدم (الأحدث أولاً)
   const sortedSessions = [...sessions].sort((a, b) => {
     const timestampA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
     const timestampB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-    return timestampB - timestampA;
+    return timestampB - timestampA; // الأحدث أولاً
   });
+
+  // حساب الجلسات المستخدمة من החبילה (الجلسات التي لديها packageAmount > 0)
+  const usedSessionsCount = sortedSessions.filter(s => 
+    s.packageAmount !== null && 
+    s.packageAmount !== undefined && 
+    s.packageAmount > 0
+  ).length;
 
   // دالة لتنسيق التاريخ
   const formatDate = (session) => {
@@ -507,12 +514,12 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-700">الجلسات المستخدمة:</span>
-                <span className="text-sm font-bold text-gray-600">{sessions.filter(s => s.packageAmount).length || 0}</span>
+                <span className="text-sm font-bold text-gray-600">{usedSessionsCount}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-700">الجلسات المتبقية:</span>
                 <span className="text-sm font-bold text-orange-600">
-                  {Math.max(0, (patient.packageSessions || 0) - (sessions.filter(s => s.packageAmount).length || 0))}
+                  {Math.max(0, (patient.packageSessions || 0) - usedSessionsCount)}
                 </span>
               </div>
             </div>
