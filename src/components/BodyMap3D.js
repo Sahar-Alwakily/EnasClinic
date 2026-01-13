@@ -691,7 +691,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
         areasCount: partsToSave.length,
         areas: partsToSave,
         therapist: sessionData.therapist || "غير محدد",
-        packageAmount: sessionData.packageAmount !== undefined ? sessionData.packageAmount : null
+        packageAmount: sessionData.packageAmount !== undefined && sessionData.packageAmount !== null ? sessionData.packageAmount : null
       };
       
       console.log('حفظ الجلسة مع packageAmount:', toSave.packageAmount);

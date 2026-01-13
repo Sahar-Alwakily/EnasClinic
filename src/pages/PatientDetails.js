@@ -90,17 +90,60 @@ export default function PatientDetails() {
   );
 
   // حساب المبلغ المستخدم من החבילה
-  const packageCreatedAt = patient?.packageCreatedAt ? new Date(patient.packageCreatedAt).getTime() : 0;
+  const packageCreatedAt = patient?.packageCreatedAt ? new Date(patient.packageCreatedAt) : null;
   
   const totalUsedAmount = sessions.reduce((sum, session) => {
-    // حساب فقط الجلسات التي تمت بعد إنشاء החבילה
-    const sessionTimestamp = session.timestamp ? new Date(session.timestamp).getTime() : 0;
-    if (packageCreatedAt > 0 && sessionTimestamp < packageCreatedAt) {
-      return sum; // تجاهل الجلسات قبل إنشاء החבילה
+    // إذا لم تكن هناك حبيلة، لا نحسب شيئاً
+    if (!packageCreatedAt) {
+      return sum;
     }
-    const amount = session.packageAmount || 0;
-    return sum + (typeof amount === 'number' ? amount : parseFloat(amount) || 0);
+    
+    // حساب تاريخ الجلسة
+    let sessionDate = null;
+    if (session.timestamp) {
+      sessionDate = new Date(session.timestamp);
+    } else if (session.gregorianDate) {
+      sessionDate = new Date(session.gregorianDate);
+    } else if (session.date) {
+      // تحويل من DD/MM/YYYY إلى Date
+      const dateParts = session.date.split('/');
+      if (dateParts.length === 3) {
+        sessionDate = new Date(parseInt(dateParts[2]), parseInt(dateParts[1]) - 1, parseInt(dateParts[0]));
+      }
+    }
+    
+    // إذا لم نتمكن من تحديد تاريخ الجلسة، نتجاهلها
+    if (!sessionDate || isNaN(sessionDate.getTime())) {
+      console.log('تجاهل جلسة بدون تاريخ صحيح:', session);
+      return sum;
+    }
+    
+    // مقارنة التواريخ (بدون وقت) - نحسب الجلسات من تاريخ إنشاء الحبيلة فصاعداً
+    const packageDateOnly = new Date(packageCreatedAt.getFullYear(), packageCreatedAt.getMonth(), packageCreatedAt.getDate());
+    const sessionDateOnly = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate());
+    
+    // إذا كانت الجلسة في نفس اليوم أو بعد إنشاء الحبيلة، نحسبها
+    if (sessionDateOnly >= packageDateOnly) {
+      const amount = session.packageAmount || 0;
+      const numericAmount = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
+      console.log('إضافة مبلغ من جلسة:', {
+        date: sessionDateOnly.toLocaleDateString('ar-SA'),
+        packageDate: packageDateOnly.toLocaleDateString('ar-SA'),
+        amount: numericAmount,
+        sessionPackageAmount: session.packageAmount
+      });
+      return sum + numericAmount;
+    } else {
+      console.log('تجاهل جلسة قبل إنشاء الحبيلة:', {
+        sessionDate: sessionDateOnly.toLocaleDateString('ar-SA'),
+        packageDate: packageDateOnly.toLocaleDateString('ar-SA')
+      });
+    }
+    
+    return sum; // تجاهل الجلسات قبل إنشاء الحبيلة
   }, 0);
+  
+  console.log('المبلغ المستخدم من الحبيلة:', totalUsedAmount, 'من', sessions.length, 'جلسة');
   
   // حساب المبلغ المتبقي من החبילה
   const remainingAmount = Math.max(0, (patient?.packagePaidAmount || 0) - totalUsedAmount);
