@@ -461,24 +461,24 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 md:space-y-4 lg:space-y-6">
       {/* قسم الاختيار */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 md:p-6">
-        <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
+        <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
           <span>⚙️</span>
           <span>إعدادات الجلسات</span>
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">نوع السلسلة:</label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">نوع السلسلة:</label>
+            <select className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
               <option>شاملة</option>
               <option>جزئية</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">الحالة:</label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 md:mb-2">الحالة:</label>
+            <select className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
               <option>نشطة</option>
               <option>مكتملة</option>
               <option>متوقفة</option>
@@ -487,114 +487,161 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
         </div>
       </div>
 
-      {/* الجدول */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-x-auto scrollbar-hide">
-        <div className="min-w-full">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-                <th className="border border-gray-300 px-3 py-3 text-xs md:text-sm font-bold text-right sticky right-0 bg-gradient-to-r from-purple-600 to-blue-600 z-10 shadow-lg">
-                  الجلسة
-                </th>
-                {sortedSessions.map((session, index) => (
-                  <th 
-                    key={session.id || index} 
-                    className="border border-gray-300 px-2 py-3 text-xs md:text-sm font-bold min-w-[100px] md:min-w-[120px] relative group"
+      {/* الجدول - تصميم متجاوب */}
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+        {/* للشاشات الصغيرة - عرض بطاقات */}
+        <div className="block md:hidden">
+          {sortedSessions.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-2">📭</div>
+              <p className="text-gray-500 text-sm">لا توجد جلسات</p>
+            </div>
+          ) : (
+            sortedSessions.map((session, index) => (
+              <div key={session.id || index} className="border-b border-gray-200 last:border-b-0 p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap">جلسة {index + 1}</span>
+                    <span className="text-xs text-gray-600">{formatDate(session)}</span>
+                  </div>
+                  <button
+                    onClick={() => handleEdit(session)}
+                    className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50 transition self-start sm:self-auto"
                   >
-                    <div className="flex flex-col items-center">
-                      <span>{index + 1}</span>
-                      <button
-                        onClick={() => handleEdit(session)}
-                        className="mt-1 text-white/70 hover:text-white text-xs opacity-0 group-hover:opacity-100 transition"
-                        title="تعديل الجلسة"
-                      >
-                        ✏️
-                      </button>
-                    </div>
+                    ✏️ تعديل
+                  </button>
+                </div>
+                <div className="text-xs sm:text-sm text-gray-600 mb-2">👨‍⚕️ {session.therapist || 'غير محدد'}</div>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  {allAreas.length > 0 ? (
+                    allAreas.map((area, areaIndex) => (
+                      hasArea(session, area) && (
+                        <div key={areaIndex} className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded">
+                          <span className="text-green-600 font-bold text-sm">✓</span>
+                          <span className="text-xs text-gray-700">{area}</span>
+                        </div>
+                      )
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">لا توجد مناطق</span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* للشاشات المتوسطة والكبيرة - عرض جدول */}
+        <div className="hidden md:block overflow-x-auto scrollbar-hide">
+          <div className="min-w-full">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+                  <th className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold text-right sticky right-0 bg-gradient-to-r from-purple-600 to-blue-600 z-10 shadow-lg min-w-[100px]">
+                    الجلسة
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {/* الصف الأول: التاريخ */}
-              <tr className="bg-gray-50 hover:bg-gray-100 transition">
-                <td className="border border-gray-300 px-3 py-3 text-xs md:text-sm font-bold text-gray-700 sticky right-0 bg-gray-50 z-10 shadow-lg">
-                  📅 التاريخ
-                </td>
-                {sortedSessions.map((session, index) => (
-                  <td 
-                    key={`date-${session.id || index}`} 
-                    className="border border-gray-300 px-2 py-3 text-xs md:text-sm text-center font-medium"
-                  >
-                    {formatDate(session)}
-                  </td>
-                ))}
-              </tr>
-
-              {/* الصف الثاني: اسم المعالج */}
-              <tr className="bg-white hover:bg-gray-50 transition">
-                <td className="border border-gray-300 px-3 py-3 text-xs md:text-sm font-bold text-gray-700 sticky right-0 bg-white z-10 shadow-lg">
-                  👨‍⚕️ المعالج
-                </td>
-                {sortedSessions.map((session, index) => (
-                  <td 
-                    key={`therapist-${session.id || index}`} 
-                    className="border border-gray-300 px-2 py-3 text-xs md:text-sm text-center"
-                  >
-                    {session.therapist || 'غير محدد'}
-                  </td>
-                ))}
-              </tr>
-
-              {/* الصفوف للمناطق */}
-              {allAreas.length > 0 ? (
-                allAreas.map((area, areaIndex) => (
-                  <tr key={`area-${areaIndex}`} className={areaIndex % 2 === 0 ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white hover:bg-gray-50'} style={{ transition: 'background-color 0.2s' }}>
-                    <td className="border border-gray-300 px-3 py-3 text-xs md:text-sm font-medium text-gray-700 sticky right-0 z-10 shadow-lg" style={{ backgroundColor: areaIndex % 2 === 0 ? '#f9fafb' : '#ffffff' }}>
-                      {area}
-                    </td>
-                    {sortedSessions.map((session, sessionIndex) => (
-                      <td 
-                        key={`cell-${areaIndex}-${session.id || sessionIndex}`} 
-                        className="border border-gray-300 px-2 py-3 text-center"
-                      >
-                        {hasArea(session, area) ? (
-                          <span className="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-700 rounded-full font-bold text-sm">✓</span>
-                        ) : (
-                          <span className="text-gray-300">-</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={sortedSessions.length + 1} className="border border-gray-300 px-3 py-4 text-center text-gray-500 text-sm">
-                    لا توجد مناطق محددة
-                  </td>
+                  {sortedSessions.map((session, index) => (
+                    <th 
+                      key={session.id || index} 
+                      className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold min-w-[90px] sm:min-w-[100px] md:min-w-[120px] lg:min-w-[140px] relative group"
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span>{index + 1}</span>
+                        <button
+                          onClick={() => handleEdit(session)}
+                          className="text-white/70 hover:text-white text-xs opacity-0 group-hover:opacity-100 transition"
+                          title="تعديل الجلسة"
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    </th>
+                  ))}
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {/* الصف الأول: التاريخ */}
+                <tr className="bg-gray-50 hover:bg-gray-100 transition">
+                  <td className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold text-gray-700 sticky right-0 bg-gray-50 z-10 shadow-lg">
+                    📅 التاريخ
+                  </td>
+                  {sortedSessions.map((session, index) => (
+                    <td 
+                      key={`date-${session.id || index}`} 
+                      className="border border-gray-300 px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm text-center font-medium"
+                    >
+                      {formatDate(session)}
+                    </td>
+                  ))}
+                </tr>
+
+                {/* الصف الثاني: اسم المعالج */}
+                <tr className="bg-white hover:bg-gray-50 transition">
+                  <td className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-bold text-gray-700 sticky right-0 bg-white z-10 shadow-lg">
+                    👨‍⚕️ المعالج
+                  </td>
+                  {sortedSessions.map((session, index) => (
+                    <td 
+                      key={`therapist-${session.id || index}`} 
+                      className="border border-gray-300 px-1 sm:px-2 py-2 sm:py-3 text-xs sm:text-sm text-center"
+                    >
+                      <span className="truncate block" title={session.therapist || 'غير محدد'}>
+                        {session.therapist || 'غير محدد'}
+                      </span>
+                    </td>
+                  ))}
+                </tr>
+
+                {/* الصفوف للمناطق */}
+                {allAreas.length > 0 ? (
+                  allAreas.map((area, areaIndex) => (
+                    <tr key={`area-${areaIndex}`} className={areaIndex % 2 === 0 ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white hover:bg-gray-50'} style={{ transition: 'background-color 0.2s' }}>
+                      <td className="border border-gray-300 px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-700 sticky right-0 z-10 shadow-lg" style={{ backgroundColor: areaIndex % 2 === 0 ? '#f9fafb' : '#ffffff' }}>
+                        {area}
+                      </td>
+                      {sortedSessions.map((session, sessionIndex) => (
+                        <td 
+                          key={`cell-${areaIndex}-${session.id || sessionIndex}`} 
+                          className="border border-gray-300 px-1 sm:px-2 py-2 sm:py-3 text-center"
+                        >
+                          {hasArea(session, area) ? (
+                            <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 bg-green-100 text-green-700 rounded-full font-bold text-xs sm:text-sm">✓</span>
+                          ) : (
+                            <span className="text-gray-300 text-xs">-</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={sortedSessions.length + 1} className="border border-gray-300 px-3 py-4 text-center text-gray-500 text-xs sm:text-sm">
+                      لا توجد مناطق محددة
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* الملاحظات */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 sm:p-4 md:p-5 lg:p-6">
+        <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
           <span>📝</span>
           <span>الملاحظات</span>
         </h3>
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {sortedSessions.map((session, index) => (
             session.notes && (
-              <div key={`notes-${session.id || index}`} className="bg-gradient-to-r from-gray-50 to-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
+              <div key={`notes-${session.id || index}`} className="bg-gradient-to-r from-gray-50 to-white rounded-lg p-3 sm:p-4 border border-gray-200 hover:shadow-md transition">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">
                       الجلسة {index + 1}
                     </span>
-                    <span className="text-xs md:text-sm font-medium text-gray-600">
+                    <span className="text-xs sm:text-sm font-medium text-gray-600">
                       {formatDate(session)}
                     </span>
                     {session.therapist && session.therapist !== "غير محدد" && (
@@ -605,19 +652,19 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
                   </div>
                   <button
                     onClick={() => handleEdit(session)}
-                    className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50 transition flex items-center gap-1"
+                    className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50 transition flex items-center gap-1 self-start sm:self-auto"
                   >
                     ✏️ تعديل
                   </button>
                 </div>
-                <p className="text-xs md:text-sm text-gray-700 leading-relaxed">{session.notes}</p>
+                <p className="text-xs sm:text-sm md:text-base text-gray-700 leading-relaxed break-words">{session.notes}</p>
               </div>
             )
           ))}
           {sortedSessions.filter(s => s.notes).length === 0 && (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-2">📝</div>
-              <p className="text-gray-500 text-sm">لا توجد ملاحظات</p>
+            <div className="text-center py-6 sm:py-8">
+              <div className="text-3xl sm:text-4xl mb-2">📝</div>
+              <p className="text-gray-500 text-xs sm:text-sm">لا توجد ملاحظات</p>
             </div>
           )}
         </div>
