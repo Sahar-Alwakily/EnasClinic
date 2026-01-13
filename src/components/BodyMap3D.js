@@ -421,6 +421,12 @@ function SessionModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // التحقق من وجود مناطق محددة
+    if (!selectedParts || selectedParts.length === 0) {
+      alert('يرجى تحديد منطقة واحدة على الأقل قبل الحفظ');
+      return;
+    }
+    
     // تحويل التاريخ المحدد إلى تنسيقات مختلفة
     const selectedDateObj = new Date(selectedDate);
     const formattedDate = selectedDateObj.toLocaleDateString('en-GB');
@@ -428,7 +434,7 @@ function SessionModal({
     
     const sessionData = {
       notes,
-      parts: selectedParts,
+      parts: Array.isArray(selectedParts) ? [...selectedParts] : [],
       date: formattedDate,
       gregorianDate: gregorianDate,
       therapist: therapist.trim(),
@@ -597,18 +603,21 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       
       const sessionId = newRef.key;
       
+      // استخدام المناطق من sessionData بدلاً من selectedParts من الـ state
+      const partsToSave = sessionData.parts || selectedParts;
+      
       const toSave = {
         ...sessionData,
-        parts: selectedParts,
-        partName: selectedParts.join(' + '),
+        parts: partsToSave,
+        partName: partsToSave.join(' + '),
         clientId: client.idNumber,
         clientName: client.fullName,
         timestamp: sessionData.timestamp || new Date().toISOString(),
         date: sessionData.date,
         gregorianDate: sessionData.gregorianDate,
         sessionId: sessionId,
-        areasCount: selectedParts.length,
-        areas: selectedParts,
+        areasCount: partsToSave.length,
+        areas: partsToSave,
         therapist: sessionData.therapist || "غير محدد"
       };
       
@@ -617,7 +626,7 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       
       setSelectedParts([]);
       setShowSessionModal(false);
-      return { success: true, message: `تمت إضافة جلسة بتاريخ ${sessionData.date} تشمل ${selectedParts.length} منطقة` };
+      return { success: true, message: `تمت إضافة جلسة بتاريخ ${sessionData.date} تشمل ${partsToSave.length} منطقة` };
     } catch (err) {
       console.error(err);
       return { success: false, message: "خطأ أثناء الحفظ" };
