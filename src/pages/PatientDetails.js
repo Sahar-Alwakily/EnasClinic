@@ -508,10 +508,31 @@ function SessionsTable({ sessions, getAreaNameInArabic, getSessionAreas, patient
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-700">مبلغ החבילה:</span>
-                <span className="text-sm font-bold text-purple-600">{patient.packagePaidAmount || 0} ₪</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-purple-600">{patient.packagePaidAmount || 0} ₪</span>
+                  <button
+                    onClick={() => {
+                      const newAmount = prompt('أدخل مبلغ החבילה الجديد:', patient.packagePaidAmount || 0);
+                      if (newAmount && !isNaN(parseFloat(newAmount))) {
+                        const patientRef = ref(db, `patients/${patientId}`);
+                        update(patientRef, {
+                          packagePaidAmount: parseFloat(newAmount)
+                        }).then(() => {
+                          alert('تم تحديث مبلغ החבילה بنجاح');
+                        }).catch(err => {
+                          alert('حدث خطأ: ' + err.message);
+                        });
+                      }
+                    }}
+                    className="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-1 rounded transition"
+                    title="تعديل مبلغ החבילה"
+                  >
+                    ✏️
+                  </button>
+                </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">المبلغ المستخدم:</span>
+                <span className="text-sm font-semibold text-gray-700">المبلغ المدفوع:</span>
                 <span className="text-sm font-bold text-red-600">{totalUsedAmount.toFixed(2)} ₪</span>
               </div>
               <div className="flex items-center justify-between">
