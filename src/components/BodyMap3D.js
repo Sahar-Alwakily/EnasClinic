@@ -76,6 +76,15 @@ const allBodyParts = [
   'الايد كامل',
 ];
 
+// دالة للحصول على تاريخ اليوم بصيغة DD/MM/YYYY
+const getTodayFormattedDate = () => {
+  const today = new Date();
+  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = today.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 // دالة لتحويل أسماء المناطق في الجلسات إلى عربية
 const convertSessionPartsToArabic = (parts) => {
   if (!parts) return [];
@@ -417,7 +426,7 @@ function SessionModal({
 }) {
   const [notes, setNotes] = useState("");
   const [therapist, setTherapist] = useState(""); 
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getTodayFormattedDate());
   const [packageAmount, setPackageAmount] = useState("");
 
   // تسجيل للتشخيص وإعادة تعيين الحقول
@@ -427,7 +436,7 @@ function SessionModal({
       setPackageAmount("");
       setNotes("");
       setTherapist("");
-      setSelectedDate(new Date().toISOString().split('T')[0]);
+      setSelectedDate(getTodayFormattedDate());
     }
   }, [isOpen, selectedParts]);
 
@@ -449,11 +458,60 @@ function SessionModal({
         alert('يرجى إدخال اسم المعالج');
         return;
       }
-      
-      // تحويل التاريخ المحدد إلى تنسيقات مختلفة
-      const selectedDateObj = new Date(selectedDate);
-      const formattedDate = selectedDateObj.toLocaleDateString('en-GB');
-      const gregorianDate = selectedDate;
+
+      // التحقق من إدخال التاريخ وتحويله إلى صيغ مختلفة
+      if (!selectedDate || selectedDate.trim() === '') {
+        alert('يرجى إدخال تاريخ الجلسة (مثال: 01/02/2026)');
+        return;
+      }
+
+      const rawDate = selectedDate.trim();
+      let day, month, year;
+
+      // دعم الصيغ: DD/MM/YYYY أو DD-MM-YYYY أو YYYY-MM-DD أو DDMMYYYY
+      if (rawDate.includes('/') || rawDate.includes('-')) {
+        const parts = rawDate.split(/[\/\-]/);
+        if (parts.length === 3) {
+          // إذا كان أول جزء هو السنة (YYYY-MM-DD)
+          if (parts[0].length === 4) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            day = parseInt(parts[2], 10);
+          } else if (parts[2].length === 4) {
+            // DD/MM/YYYY أو DD-MM-YYYY
+            day = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+            year = parseInt(parts[2], 10);
+          }
+        }
+      } else if (/^\d{8}$/.test(rawDate)) {
+        // صيغة بدون فواصل: DDMMYYYY
+        day = parseInt(rawDate.slice(0, 2), 10);
+        month = parseInt(rawDate.slice(2, 4), 10);
+        year = parseInt(rawDate.slice(4), 10);
+      }
+
+      // التحقق من أن اليوم/الشهر/السنة أرقام صحيحة
+      if (!day || !month || !year || month < 1 || month > 12 || day < 1 || day > 31) {
+        alert('يرجى إدخال التاريخ بصيغة صحيحة مثل 01/02/2026');
+        return;
+      }
+
+      const selectedDateObj = new Date(year, month - 1, day);
+
+      // التحقق من أن التاريخ صحيح فعلاً (مثلاً عدم قبول 31/02/2026)
+      if (
+        isNaN(selectedDateObj.getTime()) ||
+        selectedDateObj.getDate() !== day ||
+        selectedDateObj.getMonth() !== month - 1 ||
+        selectedDateObj.getFullYear() !== year
+      ) {
+        alert('يرجى إدخال تاريخ حقيقي وصحيح (مثال: 01/02/2026)');
+        return;
+      }
+
+      const formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+      const gregorianDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
       const sessionData = {
         notes: notes || '',
@@ -529,14 +587,13 @@ function SessionModal({
             <div className="input-group">
               <label>تاريخ الجلسة:</label>
               <input
-                type="date"
+                type="text"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="form-input"
-                max={new Date().toISOString().split('T')[0]}
               />
               <small className="date-note">
-                اختر تاريخ الجلسة (يمكن اختيار أي تاريخ ماضي)
+                اكتب تاريخ الجلسة بصيغة يوم/شهر/سنة (مثال: 01/02/2026)
               </small>
             </div>
 
