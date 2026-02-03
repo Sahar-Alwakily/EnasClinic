@@ -31,16 +31,31 @@ export default function SelectClient() {
     });
   }, []);
 
-  // فلترة المرضى حسب نص البحث (الاسم بالكامل يحتوي على الكلمة كما كُتبت)
-  // ملاحظة: لا نغيّر الحروف ولا نخفض الكيس حتى يدعم العربية كما هي
+  // نفس دالة normalizeText المستخدمة في صفحة العملاء
+  const normalizeText = (text = '') =>
+    text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ');
+
+  // فلترة المرضى بنفس منطق صفحة العملاء (الاسم من البداية + الهوية/الهاتف جزئي)
   const filteredPatients = patients.filter((patient) => {
-    if (!query) return true; // بدون بحث → اعرض كل المرضى
+    if (!query) return true;
 
-    const name = (patient.fullName || '').toString();
-    const q = query.toString();
+    const term = normalizeText(query);
 
-    // يطابق إذا كان الاسم يحتوي على النص المكتوب (في أي مكان من الاسم)
-    return name.includes(q);
+    const name = normalizeText(patient.fullName || '');
+    const idNumber = normalizeText(patient.idNumber || '');
+    const phone = normalizeText(patient.phone || '');
+
+    return (
+      // الاسم: يطابق من بداية الاسم فقط
+      (term && name.startsWith(term)) ||
+      // الهوية والهاتف: يسمح بالمطابقة الجزئية
+      idNumber.includes(term) ||
+      phone.includes(term)
+    );
   });
 
   const handleSelect = (patient) => {
@@ -52,11 +67,11 @@ export default function SelectClient() {
     <div className="p-6 max-w-2xl mx-auto">
       <h2 className="text-2xl mb-2 font-bold text-center">اختر المريض</h2>
       <p className="text-xs md:text-sm text-gray-500 text-center mb-4">
-        ابحث باسم المريض، يتم الفلترة حسب الكلمة كما تكتبينها (مثال: نور ← نور القرناوي، نورين)
+        ابحث بالاسم، رقم الهوية أو الهاتف (نفس أسلوب البحث في صفحة العملاء)
       </p>
       <input
         type="text"
-        placeholder="اكتب الحرف الأول أو الأولين من اسم المريض..."
+        placeholder="ابحث عن مريض بالاسم أو رقم الهوية أو الهاتف..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="border p-3 w-full rounded-lg mb-4 text-lg"
