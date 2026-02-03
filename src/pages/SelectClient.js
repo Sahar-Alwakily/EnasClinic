@@ -34,15 +34,16 @@ export default function SelectClient() {
   // دالة بسيطة لتنظيف النص (إزالة الفراغات من البداية والنهاية فقط)
   const cleanText = (text = '') => text.toString().trim();
 
-  // فلترة المرضى حسب نص البحث (الاسم فقط من البداية - بدون أي تعقيد)
+  // فلترة المرضى حسب نص البحث (الاسم فقط من بداية الكلمة الأولى - بدون أي تعقيد)
   const filteredPatients = patients.filter((patient) => {
     const q = cleanText(query);
     if (!q) return true; // بدون بحث → اعرض كل المرضى
 
     const name = cleanText(patient.fullName || '');
+    const firstWord = name.split(' ')[0] || name;
 
-    // يطابق فقط إذا كان الاسم يبدأ بنفس ما كتبه المستخدم (حرف أو أكثر)
-    return name.startsWith(q);
+    // يطابق فقط إذا كانت الكلمة الأولى من الاسم تبدأ بما كتبتِه (حرف أو أكثر)
+    return firstWord.startsWith(q);
   });
 
   const handleSelect = (patient) => {
@@ -71,9 +72,7 @@ export default function SelectClient() {
             onClick={() => handleSelect(patient)}
           >
             <div className="font-semibold text-lg">
-              {query
-                ? (patient.fullName || '').slice(0, cleanText(query).length)
-                : patient.fullName}
+              {query ? cleanText(query) : patient.fullName}
             </div>
             <div className="text-gray-600">رقم الهوية: {patient.idNumber}</div>
             <div className="text-gray-600">الهاتف: {patient.phone}</div>
