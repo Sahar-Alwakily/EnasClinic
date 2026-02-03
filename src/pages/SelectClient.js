@@ -60,8 +60,9 @@ export default function SelectClient() {
     const phoneDigits = normalizeNumber(patient.phone || '');
 
     return (
-      // بحث نصي بالاسم / الهوية / الهاتف
-      name.includes(term) ||
+      // بحث نصي بالاسم: يطابق فقط من بداية الاسم
+      (term && name.startsWith(term)) ||
+      // بحث نصي جزئي في الهوية والهاتف
       idText.includes(term) ||
       phoneText.includes(term) ||
       // بحث رقمي خالص (يتجاهل الشرطات والمسافات)

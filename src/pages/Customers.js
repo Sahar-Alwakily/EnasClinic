@@ -68,7 +68,9 @@ export default function Customers() {
 
     // نبحث في الاسم، رقم الهوية، ورقم الهاتف
     return (
-      name.includes(term) ||
+      // الاسم: يطابق من بداية الاسم فقط
+      (term && name.startsWith(term)) ||
+      // الهوية والهاتف: يسمح بالمطابقة الجزئية
       idNumber.includes(term) ||
       phone.includes(term)
     );
