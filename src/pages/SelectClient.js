@@ -70,7 +70,11 @@ export default function SelectClient() {
             className="p-4 cursor-pointer hover:bg-purple-50 border-b last:border-b-0 transition-colors"
             onClick={() => handleSelect(patient)}
           >
-            <div className="font-semibold text-lg">{patient.fullName}</div>
+            <div className="font-semibold text-lg">
+              {query
+                ? (patient.fullName || '').slice(0, cleanText(query).length)
+                : patient.fullName}
+            </div>
             <div className="text-gray-600">رقم الهوية: {patient.idNumber}</div>
             <div className="text-gray-600">الهاتف: {patient.phone}</div>
             <div className="text-gray-500 text-sm mt-1">
