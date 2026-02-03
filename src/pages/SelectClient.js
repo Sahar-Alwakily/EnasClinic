@@ -6,16 +6,27 @@ import { ref, get } from "firebase/database";
 export default function SelectClient() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [filteredPatients, setFilteredPatients] = useState([]);
-  const [patientsData, setPatientsData] = useState({});
+  const [patients, setPatients] = useState([]);
 
   useEffect(() => {
     const patientsRef = ref(db, 'patients');
     get(patientsRef).then(snapshot => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        setPatientsData(data);
         console.log('بيانات المرضى المحملة:', data);
+
+        // تحويل البيانات من object إلى array موحدة
+        const patientsArray = Object.entries(data).map(([id, p]) => ({
+          id,
+          fullName: p.fullName || 'غير معروف',
+          idNumber: p.idNumber || 'غير معروف',
+          phone: p.phone || 'غير معروف',
+          // إضافة جميع البيانات الأخرى التي قد تحتاجها
+          ...p
+        }));
+
+        // الأحدث أولاً مثل صفحة العملاء
+        setPatients(patientsArray.reverse());
       }
     });
   }, []);
@@ -34,47 +45,30 @@ export default function SelectClient() {
       .toString()
       .replace(/\D/g, '');
 
-  useEffect(() => {
-    // تحويل بيانات المرضى إلى مصفوفة موحدة للاستخدام في القائمة والبحث
-    const allPatients = Object.entries(patientsData).map(([id, p]) => ({
-      id: id,
-      fullName: p.fullName || 'غير معروف',
-      idNumber: p.idNumber || 'غير معروف',
-      phone: p.phone || 'غير معروف',
-      // إضافة جميع البيانات الأخرى التي قد تحتاجها
-      ...p
-    }));
-
-    // إذا لم يكن هناك نص بحث، نعرض كل المرضى
-    if (!query) {
-      setFilteredPatients(allPatients);
-      return;
-    }
+  // فلترة المرضى حسب نص البحث (الاسم / الهوية / الهاتف)
+  const filteredPatients = patients.filter((patient) => {
+    if (!query) return true;
 
     const term = normalizeText(query);
     const termNum = normalizeNumber(query);
 
-    const results = allPatients.filter((patient) => {
-      const name = normalizeText(patient.fullName || '');
-      const idText = normalizeText(patient.idNumber || '');
-      const phoneText = normalizeText(patient.phone || '');
+    const name = normalizeText(patient.fullName || '');
+    const idText = normalizeText(patient.idNumber || '');
+    const phoneText = normalizeText(patient.phone || '');
 
-      const idDigits = normalizeNumber(patient.idNumber || '');
-      const phoneDigits = normalizeNumber(patient.phone || '');
+    const idDigits = normalizeNumber(patient.idNumber || '');
+    const phoneDigits = normalizeNumber(patient.phone || '');
 
-      return (
-        // بحث نصي بالاسم / الهوية / الهاتف
-        name.includes(term) ||
-        idText.includes(term) ||
-        phoneText.includes(term) ||
-        // بحث رقمي خالص (يتجاهل الشرطات والمسافات)
-        (termNum &&
-          (idDigits.includes(termNum) || phoneDigits.includes(termNum)))
-      );
-    });
-
-    setFilteredPatients(results);
-  }, [query, patientsData]);
+    return (
+      // بحث نصي بالاسم / الهوية / الهاتف
+      name.includes(term) ||
+      idText.includes(term) ||
+      phoneText.includes(term) ||
+      // بحث رقمي خالص (يتجاهل الشرطات والمسافات)
+      (termNum &&
+        (idDigits.includes(termNum) || phoneDigits.includes(termNum)))
+    );
+  });
 
   const handleSelect = (patient) => {
     console.log('المريض المختار:', patient);
