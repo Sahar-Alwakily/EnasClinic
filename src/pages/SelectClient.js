@@ -31,25 +31,18 @@ export default function SelectClient() {
     });
   }, []);
 
-  // دالة للمقارنة بعد إزالة المسافات وتوحيد الأحرف
-  const normalizeText = (text = '') =>
-    text
-      .toString()
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, ' ');
-  
-  // فلترة المرضى حسب نص البحث (الاسم فقط من البداية - Prefix)
+  // دالة بسيطة لتنظيف النص (إزالة الفراغات من البداية والنهاية فقط)
+  const cleanText = (text = '') => text.toString().trim();
+
+  // فلترة المرضى حسب نص البحث (الاسم فقط من البداية - بدون أي تعقيد)
   const filteredPatients = patients.filter((patient) => {
-    if (!query) return true;
+    const q = cleanText(query);
+    if (!q) return true; // بدون بحث → اعرض كل المرضى
 
-    const term = normalizeText(query);
-    const name = normalizeText(patient.fullName || '');
+    const name = cleanText(patient.fullName || '');
 
-    return (
-      // بحث نصي بالاسم: يطابق فقط من بداية الاسم
-      term && name.startsWith(term)
-    );
+    // يطابق فقط إذا كان الاسم يبدأ بنفس ما كتبه المستخدم (حرف أو أكثر)
+    return name.startsWith(q);
   });
 
   const handleSelect = (patient) => {
@@ -61,7 +54,7 @@ export default function SelectClient() {
     <div className="p-6 max-w-2xl mx-auto">
       <h2 className="text-2xl mb-2 font-bold text-center">اختر المريض</h2>
       <p className="text-xs md:text-sm text-gray-500 text-center mb-4">
-        ابحث باسم المريض فقط، يتم مطابقة الحروف من بداية الاسم (مثال: س ← سحر، سهى، سينا)
+        ابحث باسم المريض فقط، تتم المطابقة من بداية الاسم كما تكتبينه (مثال: س ← سحر، سهى، سينا)
       </p>
       <input
         type="text"
