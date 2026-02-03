@@ -38,36 +38,17 @@ export default function SelectClient() {
       .toLowerCase()
       .trim()
       .replace(/\s+/g, ' ');
-
-  // دالة لتوحيد الأرقام (إزالة أي رموز غير رقمية مثل - أو مسافة)
-  const normalizeNumber = (value = '') =>
-    value
-      .toString()
-      .replace(/\D/g, '');
-
-  // فلترة المرضى حسب نص البحث (الاسم / الهوية / الهاتف)
+  
+  // فلترة المرضى حسب نص البحث (الاسم فقط من البداية - Prefix)
   const filteredPatients = patients.filter((patient) => {
     if (!query) return true;
 
     const term = normalizeText(query);
-    const termNum = normalizeNumber(query);
-
     const name = normalizeText(patient.fullName || '');
-    const idText = normalizeText(patient.idNumber || '');
-    const phoneText = normalizeText(patient.phone || '');
-
-    const idDigits = normalizeNumber(patient.idNumber || '');
-    const phoneDigits = normalizeNumber(patient.phone || '');
 
     return (
       // بحث نصي بالاسم: يطابق فقط من بداية الاسم
-      (term && name.startsWith(term)) ||
-      // بحث نصي جزئي في الهوية والهاتف
-      idText.includes(term) ||
-      phoneText.includes(term) ||
-      // بحث رقمي خالص (يتجاهل الشرطات والمسافات)
-      (termNum &&
-        (idDigits.includes(termNum) || phoneDigits.includes(termNum)))
+      term && name.startsWith(term)
     );
   });
 
@@ -80,11 +61,11 @@ export default function SelectClient() {
     <div className="p-6 max-w-2xl mx-auto">
       <h2 className="text-2xl mb-2 font-bold text-center">اختر المريض</h2>
       <p className="text-xs md:text-sm text-gray-500 text-center mb-4">
-        ابحث بالاسم، رقم الهوية أو الهاتف (يدعم الحروف العربية والأرقام مع أو بدون فواصل)
+        ابحث باسم المريض فقط، يتم مطابقة الحروف من بداية الاسم (مثال: س ← سحر، سهى، سينا)
       </p>
       <input
         type="text"
-        placeholder="ابحث باسم المريض أو رقم الهوية أو الهاتف"
+        placeholder="اكتب الحرف الأول أو الأولين من اسم المريض..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="border p-3 w-full rounded-lg mb-4 text-lg"
