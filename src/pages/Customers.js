@@ -6,6 +6,7 @@ import { db } from "../firebaseConfig";
 export default function Customers() {
   const navigate = useNavigate();
   const [clients, setClients] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // جلب البيانات من Firebase عند التحميل
   useEffect(() => {
@@ -46,24 +47,67 @@ export default function Customers() {
     }
   };
 
+  // دالة للمقارنة بعد إزالة المسافات وتوحيد الأحرف
+  const normalizeText = (text = "") =>
+    text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, " ");
+
+  // فلترة العملاء حسب البحث (الاسم / الهوية / الهاتف) مع دعم الأرقام والحروف العربية والإنجليزية
+  const filteredClients = clients.filter((c) => {
+    if (!searchTerm) return true;
+
+    const term = normalizeText(searchTerm);
+
+    // حقول البحث المحتملة
+    const name = normalizeText(c.fullName || "");
+    const idNumber = normalizeText(c.idNumber || "");
+    const phone = normalizeText(c.phone || "");
+
+    // نبحث في الاسم، رقم الهوية، ورقم الهاتف
+    return (
+      name.includes(term) ||
+      idNumber.includes(term) ||
+      phone.includes(term)
+    );
+  });
+
   return (
     <div className="container-max p-4 sm:p-6">
       {/* العنوان وزر إضافة مريض جديد */}
-      <div className="flex flex-row justify-between items-center mb-6 gap-3">
-        <h2 className="text-2xl font-bold text-gray-800">📁 حافظة العملاء</h2>
-        <button
-          onClick={() => navigate("/add-client")}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition"
-        >
-          تعبئة استمارة مريض جديد
-        </button>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 md:mb-6 gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2 md:mb-0">
+            📁 حافظة العملاء
+          </h2>
+          <p className="text-xs md:text-sm text-gray-500">
+            ابحث بالاسم، رقم الهوية أو الهاتف (يدعم الحروف العربية والأرقام)
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="ابحث عن عميل بالاسم أو رقم الهوية أو الهاتف..."
+            className="w-full sm:w-72 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <button
+            onClick={() => navigate("/add-client")}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap transition"
+          >
+            تعبئة استمارة مريض جديد
+          </button>
+        </div>
       </div>
 
       {/* قائمة العملاء */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <ul>
-          {clients.length > 0 ? (
-            clients.map((c) => (
+          {filteredClients.length > 0 ? (
+            filteredClients.map((c) => (
               <li
                 key={c.id}
                 className="p-4 border-b last:border-b-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 hover:bg-gray-50 transition"
