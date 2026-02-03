@@ -1,6 +1,6 @@
-// BodyMap3D.js - الإصدار النهائي مع إمكانية اختيار التاريخ وإضافة الحزم
+// BodyMap3D.js - الإصدار النهائي مع إدخال تاريخ ذكي يدوياً
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { ref, set, push, onValue, update } from "firebase/database"; // أضف update هنا
+import { ref, set, push, onValue } from "firebase/database";
 import { db } from "../firebaseConfig";
 import "./BodyMap3D.css";
 
@@ -91,17 +91,13 @@ const convertSessionPartsToArabic = (parts) => {
   
   if (Array.isArray(parts)) {
     return parts.map(part => {
-      // تنظيف النص من المسافات الزائدة
       const cleanPart = part.trim();
       
-      // إذا كان الجزء بالفعل عربي، إرجاعه كما هو
       if (Object.keys(areaMaps.arToEn).some(arabicName => 
           cleanPart.includes(arabicName) || arabicName.includes(cleanPart))) {
         return cleanPart;
       }
       
-      // إذا كان إنجليزي، تحويله إلى عربي
-      // البحث في جميع الأشكال المحتملة
       for (const [en, ar] of Object.entries(areaMaps.enToAr)) {
         if (cleanPart.toLowerCase().includes(en.toLowerCase()) || 
             en.toLowerCase().includes(cleanPart.toLowerCase())) {
@@ -109,22 +105,18 @@ const convertSessionPartsToArabic = (parts) => {
         }
       }
       
-      // إذا لم يتم العثور على ترجمة، إرجاع النص كما هو
       return cleanPart;
     });
   }
   
-  // إذا كان نص واحد
   if (typeof parts === 'string') {
     const cleanPart = parts.trim();
     
-    // تحقق إذا كان النص بالفعل عربي
     const arabicRegex = /[\u0600-\u06FF]/;
     if (arabicRegex.test(cleanPart)) {
       return [cleanPart];
     }
     
-    // إذا كان إنجليزي، حاول تحويله
     for (const [en, ar] of Object.entries(areaMaps.enToAr)) {
       if (cleanPart.toLowerCase().includes(en.toLowerCase()) || 
           en.toLowerCase().includes(cleanPart.toLowerCase())) {
@@ -136,6 +128,86 @@ const convertSessionPartsToArabic = (parts) => {
   }
   
   return [];
+};
+
+// دالة لتنسيق الرقم المدخل في حقل التاريخ
+const formatDateInput = (value) => {
+  // إزالة أي حروف غير رقمية
+  let numbers = value.replace(/\D/g, '');
+  
+  // تحديد الحد الأقصى للأرقام (8 أرقام لـ DDMMYYYY)
+  if (numbers.length > 8) {
+    numbers = numbers.substring(0, 8);
+  }
+  
+  // بناء النص المنسق بناءً على عدد الأرقام
+  if (numbers.length === 0) {
+    return '';
+  } else if (numbers.length <= 2) {
+    return numbers; // يوم فقط
+  } else if (numbers.length <= 4) {
+    // يوم + شهر
+    return `${numbers.substring(0, 2)}/${numbers.substring(2)}`;
+  } else {
+    // يوم + شهر + سنة
+    const day = numbers.substring(0, 2);
+    const month = numbers.substring(2, 4);
+    const year = numbers.substring(4, 8);
+    
+    // التأكد من أن السنة مكونة من 4 أرقام
+    let formattedYear = year;
+    if (year.length === 1 && parseInt(year) > 1) {
+      formattedYear = `20${year}`;
+    } else if (year.length === 2) {
+      // إذا كانت السنة مكونة من رقمين، افترض أنها في الألفية الحالية
+      const currentYear = new Date().getFullYear();
+      const century = Math.floor(currentYear / 100) * 100;
+      formattedYear = century + parseInt(year);
+    }
+    
+    return `${day}/${month}/${formattedYear}`;
+  }
+};
+
+// دالة للتحقق من صحة التاريخ المدخل
+const isValidDate = (dateStr) => {
+  if (!dateStr || dateStr.trim() === '') return false;
+  
+  try {
+    // تقسيم التاريخ إلى أجزاء
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return false;
+    
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    let year = parseInt(parts[2], 10);
+    
+    // إصلاح السنة إذا كانت مكونة من رقمين
+    if (year < 100) {
+      const currentYear = new Date().getFullYear();
+      const century = Math.floor(currentYear / 100) * 100;
+      year = century + year;
+    }
+    
+    // التحقق من نطاقات القيم
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
+    if (month < 1 || month > 12) return false;
+    
+    // التحقق من عدد الأيام في الشهر
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day < 1 || day > daysInMonth) return false;
+    
+    // التحقق من أن السنة معقولة (بين 2000 و 2100)
+    if (year < 2000 || year > 2100) return false;
+    
+    // إنشاء كائن تاريخ والتحقق منه
+    const date = new Date(year, month - 1, day);
+    return date.getDate() === day && 
+           date.getMonth() === month - 1 && 
+           date.getFullYear() === year;
+  } catch (error) {
+    return false;
+  }
 };
 
 /* ----------------- BodyPartsSelector - قائمة اختيار المناطق ----------------- */
@@ -168,19 +240,15 @@ function BodyPartsSelector({ selectedParts = [], togglePart }) {
 function groupSessionsByDateArray(sessionsArray = []) {
   const grouped = {};
   sessionsArray.forEach((s) => {
-    // استخدام التاريخ الميلادي للتجميع - تنسيق DD/MM/YYYY
     let dateKey = s.date || s.gregorianDate || "No Date";
     
-    // إذا كان التاريخ يحتوي على خط مائل عكسي، نصححه
     if (dateKey.includes('-')) {
-      // تنسيق YYYY-MM-DD إلى DD/MM/YYYY
       const [year, month, day] = dateKey.split('-');
       dateKey = `${day}/${month}/${year}`;
     }
     
     if (!grouped[dateKey]) grouped[dateKey] = [];
     
-    // تحويل أسماء المناطق في الجلسة إلى عربية قبل التخزين
     const sessionWithArabicParts = {
       ...s,
       parts: convertSessionPartsToArabic(s.parts),
@@ -193,18 +261,15 @@ function groupSessionsByDateArray(sessionsArray = []) {
   return Object.keys(grouped)
     .map((d) => ({ date: d, sessions: grouped[d] }))
     .sort((a, b) => {
-      // تحويل التواريخ لمقارنتها
       const parseDate = (dateStr) => {
         if (dateStr === "No Date") return new Date(0);
-        
-        // تنسيق DD/MM/YYYY
         const [day, month, year] = dateStr.split('/').map(Number);
         return new Date(year, month - 1, day);
       };
       
       const da = parseDate(a.date);
       const db = parseDate(b.date);
-      return db - da; // ترتيب تنازلي (الأحدث أولاً)
+      return db - da;
     });
 }
 
@@ -326,18 +391,15 @@ function SessionsTimeline({ groupedDates = [] }) {
     );
   }
 
-  // دالة لعرض التاريخ الميلادي بأرقام إنجليزية
   const formatGregorianDate = (dateStr) => {
     if (dateStr === "No Date") return "بدون تاريخ";
     
     try {
-      // تحويل من DD/MM/YYYY إلى تاريخ
       if (dateStr.includes('/')) {
         const [day, month, year] = dateStr.split('/');
         return `${day}/${month}/${year}`;
       }
       
-      // إذا كان بصيغة YYYY-MM-DD
       if (dateStr.includes('-')) {
         const [year, month, day] = dateStr.split('-');
         return `${day}/${month}/${year}`;
@@ -349,7 +411,6 @@ function SessionsTimeline({ groupedDates = [] }) {
     }
   };
 
-  // دالة لعرض الوقت بتنسيق 24 ساعة
   const formatTime = (timestamp) => {
     if (!timestamp) return '--:--';
     
@@ -364,7 +425,6 @@ function SessionsTimeline({ groupedDates = [] }) {
       return '--:--';
     }
   };
-
 
   return (
     <div className="timeline">
@@ -420,98 +480,122 @@ function SessionModal({
   onClose, 
   selectedParts, 
   onSave, 
-  prices,
   isProcessing,
   client
 }) {
   const [notes, setNotes] = useState("");
   const [therapist, setTherapist] = useState(""); 
-  const [selectedDate, setSelectedDate] = useState(getTodayFormattedDate());
+  const [dateInput, setDateInput] = useState("");
+  const [dateError, setDateError] = useState("");
   const [packageAmount, setPackageAmount] = useState("");
+  const [showExamples, setShowExamples] = useState(false);
 
-  // تسجيل للتشخيص وإعادة تعيين الحقول
+  // تهيئة حقل التاريخ عند فتح المودال
   useEffect(() => {
     if (isOpen) {
-      console.log('المودال مفتوح - المناطق المحددة:', selectedParts);
+      const today = getTodayFormattedDate();
+      setDateInput(today);
+      setDateError("");
       setPackageAmount("");
       setNotes("");
       setTherapist("");
-      setSelectedDate(getTodayFormattedDate());
+      setShowExamples(false);
     }
-  }, [isOpen, selectedParts]);
+  }, [isOpen]);
+
+  // معالجة إدخال التاريخ
+  const handleDateChange = (e) => {
+    const value = e.target.value;
+    
+    // تطبيق التنسيق التلقائي
+    const formatted = formatDateInput(value);
+    setDateInput(formatted);
+    
+    // التحقق من الصحة
+    if (formatted && formatted.includes('/') && formatted.split('/').length === 3) {
+      if (isValidDate(formatted)) {
+        setDateError("");
+      } else {
+        setDateError("تاريخ غير صحيح. مثال: 15/02/2026");
+      }
+    } else if (value.trim() !== '') {
+      setDateError("أدخل التاريخ كاملاً (يوم/شهر/سنة)");
+    } else {
+      setDateError("");
+    }
+  };
+
+  // إضافة خط فاصل تلقائياً عند الاكتمال
+  const handleDateKeyUp = (e) => {
+    const value = dateInput.replace(/\D/g, '');
+    
+    // إضافة شرطة تلقائياً بعد اليوم (بعد إدخال رقمين)
+    if (value.length === 2 && !dateInput.includes('/')) {
+      setDateInput(`${value}/`);
+    }
+    // إضافة شرطة تلقائياً بعد الشهر (بعد إدخال 4 أرقام)
+    else if (value.length === 4 && dateInput.split('/').length < 3) {
+      const parts = dateInput.split('/');
+      if (parts.length === 2) {
+        setDateInput(`${parts[0]}/${parts[1]}/`);
+      }
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('بدء حفظ الجلسة...', { selectedParts, therapist, notes, selectedDate });
+    // التحقق من المناطق
+    if (!selectedParts || selectedParts.length === 0) {
+      alert('يرجى تحديد منطقة واحدة على الأقل قبل الحفظ');
+      return;
+    }
     
+    // التحقق من المعالج
+    if (!therapist || therapist.trim() === '') {
+      alert('يرجى إدخال اسم المعالج');
+      return;
+    }
+
+    // التحقق من التاريخ
+    if (!dateInput || dateInput.trim() === '') {
+      alert('يرجى إدخال تاريخ الجلسة');
+      return;
+    }
+
+    // التحقق من صحة التاريخ
+    if (!isValidDate(dateInput)) {
+      alert('يرجى إدخال تاريخ صحيح. مثال: 15/02/2026');
+      return;
+    }
+
+    // التحقق من صيغة التاريخ (يجب أن يحتوي على شرطتين)
+    if (!dateInput.includes('/') || dateInput.split('/').length !== 3) {
+      alert('صيغة التاريخ غير صحيحة. استخدم تنسيق يوم/شهر/سنة');
+      return;
+    }
+
     try {
-      // التحقق من وجود مناطق محددة
-      if (!selectedParts || selectedParts.length === 0) {
-        alert('يرجى تحديد منطقة واحدة على الأقل قبل الحفظ');
-        return;
+      const [day, month, year] = dateInput.split('/').map(Number);
+      
+      // تحويل السنة إذا كانت مكونة من رقمين
+      let fullYear = year;
+      if (year < 100) {
+        const currentYear = new Date().getFullYear();
+        const century = Math.floor(currentYear / 100) * 100;
+        fullYear = century + year;
       }
       
-      // التحقق من اسم المعالج
-      if (!therapist || therapist.trim() === '') {
-        alert('يرجى إدخال اسم المعالج');
+      // التحقق من أن السنة صحيحة
+      if (fullYear < 2000 || fullYear > 2100) {
+        alert('السنة يجب أن تكون بين 2000 و 2100');
         return;
       }
 
-      // التحقق من إدخال التاريخ وتحويله إلى صيغ مختلفة
-      if (!selectedDate || selectedDate.trim() === '') {
-        alert('يرجى إدخال تاريخ الجلسة (مثال: 01/02/2026)');
-        return;
-      }
-
-      const rawDate = selectedDate.trim();
-      let day, month, year;
-
-      // دعم الصيغ: DD/MM/YYYY أو DD-MM-YYYY أو YYYY-MM-DD أو DDMMYYYY
-      if (rawDate.includes('/') || rawDate.includes('-')) {
-        const parts = rawDate.split(/[\/\-]/);
-        if (parts.length === 3) {
-          // إذا كان أول جزء هو السنة (YYYY-MM-DD)
-          if (parts[0].length === 4) {
-            year = parseInt(parts[0], 10);
-            month = parseInt(parts[1], 10);
-            day = parseInt(parts[2], 10);
-          } else if (parts[2].length === 4) {
-            // DD/MM/YYYY أو DD-MM-YYYY
-            day = parseInt(parts[0], 10);
-            month = parseInt(parts[1], 10);
-            year = parseInt(parts[2], 10);
-          }
-        }
-      } else if (/^\d{8}$/.test(rawDate)) {
-        // صيغة بدون فواصل: DDMMYYYY
-        day = parseInt(rawDate.slice(0, 2), 10);
-        month = parseInt(rawDate.slice(2, 4), 10);
-        year = parseInt(rawDate.slice(4), 10);
-      }
-
-      // التحقق من أن اليوم/الشهر/السنة أرقام صحيحة
-      if (!day || !month || !year || month < 1 || month > 12 || day < 1 || day > 31) {
-        alert('يرجى إدخال التاريخ بصيغة صحيحة مثل 01/02/2026');
-        return;
-      }
-
-      const selectedDateObj = new Date(year, month - 1, day);
-
-      // التحقق من أن التاريخ صحيح فعلاً (مثلاً عدم قبول 31/02/2026)
-      if (
-        isNaN(selectedDateObj.getTime()) ||
-        selectedDateObj.getDate() !== day ||
-        selectedDateObj.getMonth() !== month - 1 ||
-        selectedDateObj.getFullYear() !== year
-      ) {
-        alert('يرجى إدخال تاريخ حقيقي وصحيح (مثال: 01/02/2026)');
-        return;
-      }
-
-      const formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
-      const gregorianDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${fullYear}`;
+      const gregorianDate = `${fullYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const selectedDateObj = new Date(fullYear, month - 1, day);
       
       const sessionData = {
         notes: notes || '',
@@ -523,18 +607,11 @@ function SessionModal({
         packageAmount: client?.hasPackage && packageAmount && packageAmount.trim() !== "" ? parseFloat(packageAmount) : null
       };
 
-      console.log('بيانات الجلسة المراد حفظها:', sessionData);
-
-      // استدعاء دالة الحفظ
       const result = await onSave(sessionData);
       
-      console.log('نتيجة الحفظ:', result);
-      
-      // إذا كان هناك رسالة خطأ، عرضها
       if (result && !result.success) {
         alert(result.message || 'حدث خطأ أثناء حفظ الجلسة');
       }
-      // ملاحظة: addSession تقوم بإغلاق المودال تلقائياً بعد الحفظ الناجح
     } catch (error) {
       console.error('خطأ في حفظ الجلسة:', error);
       alert('حدث خطأ أثناء حفظ الجلسة. يرجى المحاولة مرة أخرى.');
@@ -581,19 +658,52 @@ function SessionModal({
                 onChange={(e) => setTherapist(e.target.value)}
                 placeholder="أدخل اسم المعالج..."
                 className="form-input"
+                required
               />
             </div>
 
             <div className="input-group">
               <label>تاريخ الجلسة:</label>
-              <input
-                type="text"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="form-input"
-              />
+              <div className="date-input-container">
+                <input
+                  type="text"
+                  value={dateInput}
+                  onChange={handleDateChange}
+                  onKeyUp={handleDateKeyUp}
+                  placeholder="يوم/شهر/سنة"
+                  className={`form-input ${dateError ? 'error' : ''}`}
+                  maxLength="10"
+                  required
+                />
+                <button 
+                  type="button" 
+                  className="examples-btn"
+                  onClick={() => setShowExamples(!showExamples)}
+                  title="عرض أمثلة"
+                >
+                  ℹ️
+                </button>
+              </div>
+              
+              {showExamples && (
+                <div className="examples-box">
+                  <div className="examples-title">أمثلة للإدخال:</div>
+                  <div className="examples-list">
+                    <div><strong>15022026</strong> → 15/02/2026</div>
+                    <div><strong>15</strong> → 15/</div>
+                    <div><strong>1502</strong> → 15/02/</div>
+                    <div><strong>150224</strong> → 15/02/2024</div>
+                    <div><strong>31122025</strong> → 31/12/2025</div>
+                  </div>
+                </div>
+              )}
+              
+              {dateError && (
+                <div className="error-message">{dateError}</div>
+              )}
+              
               <small className="date-note">
-                اكتب تاريخ الجلسة بصيغة يوم/شهر/سنة (مثال: 01/02/2026)
+                أدخل الأرقام فقط، ستُضاف الشرطات تلقائياً. مثال: 15 ← 15/ ← 15/02 ← 15/02/2026
               </small>
             </div>
 
@@ -644,7 +754,7 @@ function SessionModal({
             <button 
               type="submit" 
               className="btn primary"
-              disabled={isProcessing || !selectedParts || selectedParts.length === 0}
+              disabled={isProcessing || !selectedParts || selectedParts.length === 0 || !!dateError}
             >
               {isProcessing ? "جاري الحفظ..." : `حفظ الجلسة (${selectedParts?.length || 0} منطقة)`}
             </button>
@@ -672,7 +782,6 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       const val = snap.val() || {};
       const arr = Object.entries(val).map(([id, s]) => ({ id, ...s }));
       
-      // تحويل جميع أسماء المناطق في الجلسات إلى عربية
       const arabicSessions = arr.map(session => ({
         ...session,
         parts: convertSessionPartsToArabic(session.parts),
@@ -713,7 +822,6 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
   );
 
   const addSession = async (sessionData) => {
-    // التحقق من وجود client و idNumber
     if (!client) {
       console.error('Client is missing:', client);
       return { success: false, message: "بيانات المريض غير موجودة. يرجى العودة واختيار المريض مرة أخرى." };
@@ -732,7 +840,6 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       
       const sessionId = newRef.key;
       
-      // استخدام المناطق من sessionData بدلاً من selectedParts من الـ state
       const partsToSave = sessionData.parts || selectedParts;
       
       const toSave = {
@@ -765,8 +872,6 @@ export default function BodyMap3D({ client, onSaveSession, open = false }) {
       setIsProcessing(false);
     }
   };
-
-
 
   const allSessions = useMemo(
     () => Object.values(sessionsByPart).flat(),
