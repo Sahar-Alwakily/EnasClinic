@@ -28,24 +28,15 @@ export default function SelectClient() {
       .trim()
       .replace(/\s+/g, ' ');
 
+  // دالة لتوحيد الأرقام (إزالة أي رموز غير رقمية مثل - أو مسافة)
+  const normalizeNumber = (value = '') =>
+    value
+      .toString()
+      .replace(/\D/g, '');
+
   useEffect(() => {
-    if (!query) return setFilteredPatients([]);
-  
-  const term = normalizeText(query);
-
-  const results = Object.entries(patientsData)
-    .filter(([id, p]) => {
-      const name = normalizeText(p.fullName || '');
-      const idNumber = normalizeText(p.idNumber || '');
-      const phone = normalizeText(p.phone || '');
-
-      return (
-        name.includes(term) ||
-        idNumber.includes(term) ||
-        phone.includes(term)
-      );
-    })
-    .map(([id, p]) => ({
+    // تحويل بيانات المرضى إلى مصفوفة موحدة للاستخدام في القائمة والبحث
+    const allPatients = Object.entries(patientsData).map(([id, p]) => ({
       id: id,
       fullName: p.fullName || 'غير معروف',
       idNumber: p.idNumber || 'غير معروف',
@@ -54,8 +45,36 @@ export default function SelectClient() {
       ...p
     }));
 
-  setFilteredPatients(results);
-}, [query, patientsData]);
+    // إذا لم يكن هناك نص بحث، نعرض كل المرضى
+    if (!query) {
+      setFilteredPatients(allPatients);
+      return;
+    }
+
+    const term = normalizeText(query);
+    const termNum = normalizeNumber(query);
+
+    const results = allPatients.filter((patient) => {
+      const name = normalizeText(patient.fullName || '');
+      const idText = normalizeText(patient.idNumber || '');
+      const phoneText = normalizeText(patient.phone || '');
+
+      const idDigits = normalizeNumber(patient.idNumber || '');
+      const phoneDigits = normalizeNumber(patient.phone || '');
+
+      return (
+        // بحث نصي بالاسم / الهوية / الهاتف
+        name.includes(term) ||
+        idText.includes(term) ||
+        phoneText.includes(term) ||
+        // بحث رقمي خالص (يتجاهل الشرطات والمسافات)
+        (termNum &&
+          (idDigits.includes(termNum) || phoneDigits.includes(termNum)))
+      );
+    });
+
+    setFilteredPatients(results);
+  }, [query, patientsData]);
 
   const handleSelect = (patient) => {
     console.log('المريض المختار:', patient);
@@ -66,7 +85,7 @@ export default function SelectClient() {
     <div className="p-6 max-w-2xl mx-auto">
       <h2 className="text-2xl mb-2 font-bold text-center">اختر المريض</h2>
       <p className="text-xs md:text-sm text-gray-500 text-center mb-4">
-        ابحث بالاسم، رقم الهوية أو الهاتف (حروف عربية وأرقام)
+        ابحث بالاسم، رقم الهوية أو الهاتف (يدعم الحروف العربية والأرقام مع أو بدون فواصل)
       </p>
       <input
         type="text"
