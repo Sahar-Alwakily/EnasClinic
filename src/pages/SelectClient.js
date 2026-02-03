@@ -31,19 +31,16 @@ export default function SelectClient() {
     });
   }, []);
 
-  // دالة بسيطة لتنظيف النص (إزالة الفراغات من البداية والنهاية فقط)
-  const cleanText = (text = '') => text.toString().trim();
-
-  // فلترة المرضى حسب نص البحث (الاسم فقط من بداية الكلمة الأولى - بدون أي تعقيد)
+  // فلترة المرضى حسب نص البحث (الاسم بالكامل يحتوي على الكلمة كما كُتبت)
+  // ملاحظة: لا نغيّر الحروف ولا نخفض الكيس حتى يدعم العربية كما هي
   const filteredPatients = patients.filter((patient) => {
-    const q = cleanText(query);
-    if (!q) return true; // بدون بحث → اعرض كل المرضى
+    if (!query) return true; // بدون بحث → اعرض كل المرضى
 
-    const name = cleanText(patient.fullName || '');
-    const firstWord = name.split(' ')[0] || name;
+    const name = (patient.fullName || '').toString();
+    const q = query.toString();
 
-    // يطابق فقط إذا كانت الكلمة الأولى من الاسم تبدأ بما كتبتِه (حرف أو أكثر)
-    return firstWord.startsWith(q);
+    // يطابق إذا كان الاسم يحتوي على النص المكتوب (في أي مكان من الاسم)
+    return name.includes(q);
   });
 
   const handleSelect = (patient) => {
@@ -55,7 +52,7 @@ export default function SelectClient() {
     <div className="p-6 max-w-2xl mx-auto">
       <h2 className="text-2xl mb-2 font-bold text-center">اختر المريض</h2>
       <p className="text-xs md:text-sm text-gray-500 text-center mb-4">
-        ابحث باسم المريض فقط، تتم المطابقة من بداية الاسم كما تكتبينه (مثال: س ← سحر، سهى، سينا)
+        ابحث باسم المريض، يتم الفلترة حسب الكلمة كما تكتبينها (مثال: نور ← نور القرناوي، نورين)
       </p>
       <input
         type="text"
@@ -71,9 +68,7 @@ export default function SelectClient() {
             className="p-4 cursor-pointer hover:bg-purple-50 border-b last:border-b-0 transition-colors"
             onClick={() => handleSelect(patient)}
           >
-            <div className="font-semibold text-lg">
-              {query ? cleanText(query) : patient.fullName}
-            </div>
+            <div className="font-semibold text-lg">{patient.fullName}</div>
             <div className="text-gray-600">رقم الهوية: {patient.idNumber}</div>
             <div className="text-gray-600">الهاتف: {patient.phone}</div>
             <div className="text-gray-500 text-sm mt-1">
