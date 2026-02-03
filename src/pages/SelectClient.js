@@ -20,26 +20,42 @@ export default function SelectClient() {
     });
   }, []);
 
+  // دالة للمقارنة بعد إزالة المسافات وتوحيد الأحرف
+  const normalizeText = (text = '') =>
+    text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ');
+
   useEffect(() => {
     if (!query) return setFilteredPatients([]);
-    
-    const results = Object.entries(patientsData)
-      .filter(([id, p]) => {
-        const nameMatch = p.fullName?.toLowerCase().includes(query.toLowerCase());
-        const idMatch = p.idNumber?.includes(query);
-        return nameMatch || idMatch;
-      })
-      .map(([id, p]) => ({ 
-        id: id,
-        fullName: p.fullName || 'غير معروف',
-        idNumber: p.idNumber || 'غير معروف',
-        phone: p.phone || 'غير معروف',
-        // إضافة جميع البيانات الأخرى التي قد تحتاجها
-        ...p
-      }));
-    
-    setFilteredPatients(results);
-  }, [query, patientsData]);
+  
+  const term = normalizeText(query);
+
+  const results = Object.entries(patientsData)
+    .filter(([id, p]) => {
+      const name = normalizeText(p.fullName || '');
+      const idNumber = normalizeText(p.idNumber || '');
+      const phone = normalizeText(p.phone || '');
+
+      return (
+        name.includes(term) ||
+        idNumber.includes(term) ||
+        phone.includes(term)
+      );
+    })
+    .map(([id, p]) => ({
+      id: id,
+      fullName: p.fullName || 'غير معروف',
+      idNumber: p.idNumber || 'غير معروف',
+      phone: p.phone || 'غير معروف',
+      // إضافة جميع البيانات الأخرى التي قد تحتاجها
+      ...p
+    }));
+
+  setFilteredPatients(results);
+}, [query, patientsData]);
 
   const handleSelect = (patient) => {
     console.log('المريض المختار:', patient);
@@ -48,10 +64,13 @@ export default function SelectClient() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl mb-6 font-bold text-center">اختر المريض</h2>
+      <h2 className="text-2xl mb-2 font-bold text-center">اختر المريض</h2>
+      <p className="text-xs md:text-sm text-gray-500 text-center mb-4">
+        ابحث بالاسم، رقم الهوية أو الهاتف (حروف عربية وأرقام)
+      </p>
       <input
         type="text"
-        placeholder="ابحث باسم المريض أو رقم الهوية"
+        placeholder="ابحث باسم المريض أو رقم الهوية أو الهاتف"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="border p-3 w-full rounded-lg mb-4 text-lg"
