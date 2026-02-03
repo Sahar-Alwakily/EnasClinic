@@ -65,7 +65,7 @@ export default function SelectClient() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl mb-2 font-bold text-center">اختر المريض</h2>
+      <h2 className="text-2xl mb-2 font-bold text-center">اختتر المريض</h2>
       <p className="text-xs md:text-sm text-gray-500 text-center mb-4">
         ابحث بالاسم، رقم الهوية أو الهاتف (نفس أسلوب البحث في صفحة العملاء)
       </p>
